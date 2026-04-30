@@ -1,0 +1,35 @@
+# Claude Code session/memory files
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+build/
+dist/
+*.egg-info/
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Project artifacts
+*.fit
+!tests/fixtures/*.fit
+
+# Garmin Connect token cache (just in case it's ever placed in-repo)
+.garth/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
