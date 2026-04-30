@@ -89,6 +89,20 @@ Custom output path:
 mwgc --input ride.gpx --output ./out/ride.fit
 ```
 
+Auto-pick the most recent GPX in a folder:
+
+```bash
+mwgc --latest ~/Downloads
+```
+
+`--latest DIR` finds the newest `.gpx` file in `DIR` by modification time,
+converts it, and uploads it.  If the same activity has already been uploaded
+(determined by its start time), the tool prints a skip message and exits
+without re-uploading.  The upload history is stored in
+`~/.mwgc/history.json`.
+
+`--latest` and `--input` are mutually exclusive.
+
 The default output path is the input file with the extension changed
 to `.fit`. The activity is tagged as cycling, sub-sport
 `virtual_activity`.
@@ -137,6 +151,7 @@ Cancelling any dialog cancels the run cleanly.
 |    3 | FIT build failed                                      |
 |    4 | Upload failed (non-auth)                              |
 |    5 | Garmin Connect authentication failed after retry      |
+|    6 | Skipped — activity already in `~/.mwgc/history.json` |
 
 ## Token cache and logout
 

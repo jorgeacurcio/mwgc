@@ -85,6 +85,21 @@ bottom; mark a box only when its acceptance criteria pass.
     log out (delete `~/.garminconnect/`), troubleshooting (MFA, duplicate,
     malformed GPX).
 
+- [x] 18. **`--latest DIR` flag** _(R8)_
+  - Add `mwgc.history` module: `DEFAULT_HISTORY_PATH`, `was_uploaded(start_time)`,
+    `record_upload(start_time)` backed by `~/.mwgc/history.json`.
+  - In `cli.py`, replace the `--input` required arg with a mutually-exclusive
+    group: `--input FILE` | `--latest DIR`.
+  - `_find_latest_gpx(dir) -> Path`: glob `*.gpx`, sort by `st_mtime`, return
+    last; raise `GpxParseError` if none found.
+  - Add exit code 6 to the table (skipped — already in history).
+  - Tests: `test_history.py` (round-trip, idempotent record, missing file);
+    `test_cli.py` additions for `--latest` with and without history hit.
+
+- [x] 19. **README update for `--latest` and history** _(R8, R9)_
+  - Document `--latest DIR` usage, the `~/.mwgc/history.json` file, and
+    exit code 6.
+
 ## Out of scope for v1 (tracked, not built)
 
 - GUI front-end — moved to its own spec under

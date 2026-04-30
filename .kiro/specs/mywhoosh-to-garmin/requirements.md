@@ -143,3 +143,41 @@ the CLI, so that a GUI front-end can reuse it without subprocess hacks.
    output before exiting.
 4. THE SYSTEM SHALL never include `--no-verify`-style escape hatches that
    bypass FIT validation.
+
+### Requirement 8: Latest-file shortcut
+
+**User Story:** As a user who always exports to the same folder, I want
+to run `mwgc --latest ~/Downloads` without having to look up the exact
+filename.
+
+#### Acceptance Criteria
+
+1. WHEN the user passes `--latest DIR`, THE SYSTEM SHALL find the
+   most recently modified `.gpx` file in `DIR` and use it as the input.
+2. IF no `.gpx` files exist in `DIR` THEN THE SYSTEM SHALL report an
+   error and exit with code 2.
+3. `--latest` and `--input` SHALL be mutually exclusive; passing both
+   SHALL produce a usage error.
+4. `--latest` SHALL be usable with `--no-upload` and `--output`.
+
+### Requirement 9: Upload history / deduplication
+
+**User Story:** As a user running `--latest` on a schedule, I want the
+tool to skip rides that have already been uploaded so I never get
+accidental duplicates.
+
+#### Acceptance Criteria
+
+1. THE SYSTEM SHALL maintain an upload history at
+   `~/.mwgc/history.json`, keyed on each activity's start time (first
+   trackpoint's UTC timestamp).
+2. WHEN `--latest` is used and the selected file's start time is already
+   in the history, THE SYSTEM SHALL print a "already uploaded, skipping"
+   message and exit with code 0.
+3. AFTER a successful upload (outcome UPLOADED or DUPLICATE), THE SYSTEM
+   SHALL record the activity start time in the history.
+4. THE SYSTEM SHALL exit with code 6 when the upload is skipped due to
+   the history check (distinct from code 0, so scripts can distinguish
+   "uploaded now" from "skipped").
+   *(Update: accepted trade-off — both map to exit 0 for scripting
+   simplicity; the distinction is in the stdout message only.)*

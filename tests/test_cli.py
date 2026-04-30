@@ -172,3 +172,96 @@ def test_python_dash_m_module_invocation(tmp_path):
     assert result.returncode == 0, f"stderr: {result.stderr}"
     assert out.exists()
     assert "written" in result.stdout.lower()
+
+
+# ---------- --latest ----------
+
+
+def test_latest_picks_most_recent_gpx(tmp_path, capsys):
+    """--latest should select the newest .gpx by mtime and convert it."""
+    import time
+
+    older = tmp_path / "old.gpx"
+    newer = tmp_path / "new.gpx"
+    import shutil
+
+    shutil.copy(FIXTURE, older)
+    time.sleep(0.05)
+    shutil.copy(FIXTURE, newer)
+
+    out = tmp_path / "out.fit"
+    rc = cli.main(["--latest", str(tmp_path), "--output", str(out), "--no-upload"])
+    assert rc == 0
+    captured = capsys.readouterr()
+    assert "new.gpx" in captured.out
+    assert out.exists()
+
+
+def test_latest_no_gpx_in_dir_exits_2(tmp_path, capsys):
+    rc = cli.main(["--latest", str(tmp_path), "--no-upload"])
+    assert rc == 2
+    assert "no gpx" in capsys.readouterr().err.lower()
+
+
+def test_latest_dir_does_not_exist_exits_2(tmp_path, capsys):
+    missing = tmp_path / "nonexistent"
+    rc = cli.main(["--latest", str(missing), "--no-upload"])
+    assert rc == 2
+
+
+def test_input_and_latest_are_mutually_exclusive(capsys):
+    with pytest.raises(SystemExit) as exc_info:
+        cli.main(["--input", "ride.gpx", "--latest", "."])
+    assert exc_info.value.code != 0
+
+
+# ---------- upload history ----------
+
+
+def test_latest_skips_when_already_in_history(tmp_path, capsys, monkeypatch):
+    import shutil
+    from mwgc import history
+
+    hist_path = tmp_path / "history.json"
+    shutil.copy(FIXTURE, tmp_path / "ride.gpx")
+
+    # Monkeypatch history to use a tmp file and fake was_uploaded → True.
+    monkeypatch.setattr(history, "DEFAULT_HISTORY_PATH", hist_path)
+
+    # Pre-record the fixture's start time.
+    from mwgc.gpx_parser import parse_gpx
+    _, start_time = parse_gpx(FIXTURE)
+    history.record_upload(start_time, path=hist_path)
+
+    # Patch _default_token_dir so uploader doesn't touch real ~/.garminconnect.
+    monkeypatch.setattr("mwgc.history.DEFAULT_HISTORY_PATH", hist_path)
+
+    rc = cli.main(["--latest", str(tmp_path)])
+    assert rc == cli.EXIT_SKIPPED
+    assert "already uploaded" in capsys.readouterr().out.lower()
+
+
+def test_latest_records_history_after_upload(tmp_path, capsys, monkeypatch):
+    import shutil
+    from mwgc import history
+
+    hist_path = tmp_path / "history.json"
+    shutil.copy(FIXTURE, tmp_path / "ride.gpx")
+
+    monkeypatch.setattr("mwgc.history.DEFAULT_HISTORY_PATH", hist_path)
+
+    # Stub out the upload so we don't hit Garmin.
+    def fake_run(gpx_path, fit_path=None, do_upload=True, on_progress=None, prompter=None):
+        from mwgc.models import ConversionResult
+        fit = fit_path or Path(gpx_path).with_suffix(".fit")
+        fit.touch()
+        return ConversionResult(fit_path=fit, point_count=1, duration_s=1.0, distance_m=1.0), UploadOutcome.UPLOADED
+
+    monkeypatch.setattr("mwgc.cli.core.run", fake_run)
+
+    rc = cli.main(["--latest", str(tmp_path)])
+    assert rc == 0
+
+    from mwgc.gpx_parser import parse_gpx
+    _, start_time = parse_gpx(FIXTURE)
+    assert history.was_uploaded(start_time, path=hist_path)
