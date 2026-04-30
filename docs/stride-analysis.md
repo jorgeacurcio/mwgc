@@ -50,7 +50,7 @@ In each table below, **status** is one of:
 
 | #  | Threat                                                                              | Status                | Notes |
 |----|-------------------------------------------------------------------------------------|-----------------------|-------|
-| T1 | Malicious GPX with XML billion-laughs / XXE                                          | **fixable**           | `gpxpy` uses stdlib `xml.etree.ElementTree`. Modern CPython disables external-entity loading by default (XXE largely closed), but **entity-expansion DoS is still possible**. Not a code-exec, just memory/CPU pressure. Trivial to harden by parsing through `defusedxml` first or capping the input file size. |
+| T1 | Malicious GPX with XML billion-laughs / XXE                                          | **OK**                | Two layers: (1) `parse_gpx` rejects files >50 MB up front (primary defense — bounded input means bounded memory regardless of XML structure). (2) `defusedxml.ElementTree.fromstring` validates the bytes before gpxpy sees them and raises `EntitiesForbidden` on entity-expansion bombs. |
 | T2 | GPX with out-of-range fields (HR=10⁹, etc.) corrupts the FIT                          | **OK**                | `fit-tool` validates uint16/uint32 ranges on encode and raises; we catch as `FitBuildError`, delete the partial file, exit code 3. |
 | T3 | Local attacker rewrites `~/.mwgc/config.toml` to redirect uploads                    | **out-of-scope**      | Local trust. |
 | T4 | Server-side tamper with the upload response (false success or false duplicate)        | **OK**                | TLS protects the response in flight. We trust Garmin Connect on the other side. |
@@ -85,7 +85,7 @@ in the current threat model.**
 
 | #  | Threat                                                                                  | Status      | Notes |
 |----|-----------------------------------------------------------------------------------------|-------------|-------|
-| D1 | Hostile GPX (huge file / billion laughs) hangs the parser                                | **fixable** | Same as T1. Add a max-file-size guard and/or `defusedxml`. |
+| D1 | Hostile GPX (huge file / billion laughs) hangs the parser                                | **OK**      | Same fix as T1. |
 | D2 | Network hangs on Garmin upload, GUI Run button stuck disabled                            | **OK**      | The uploader now wraps `client.upload_activity` in a `concurrent.futures` future with a hard timeout (default 60 s, override via `MWGC_UPLOAD_TIMEOUT_S`). On timeout it raises `UploadError("upload timed out")` and the GUI re-enables Run. |
 | D3 | Hostile GPX with billions of trackpoints exhausts disk via huge FIT                      | **mild**    | No cap on point count; practically self-limiting (the parser would OOM first). A defensive sanity cap (~1M points) would harden this. |
 | D4 | Retry loops hammer Garmin and trigger account rate-limit / lockout                       | **OK**      | Exactly one retry-on-`AuthError`, no other loops. |
@@ -105,9 +105,8 @@ in the current threat model.**
 
 ### Open
 
-1. **🟡 Harden GPX parsing against XML DoS.** Add `defusedxml`
-   (one dep, ~10 lines) and / or a file-size cap (one line). Closes
-   the only real "untrusted input" path the tool has.
+1. ~~Harden GPX parsing against XML DoS.~~ **Done** — 50 MB file-size
+   cap + `defusedxml` validation parse. See T1 / D1.
 2. ~~chmod the `~/.garminconnect/` token directory after `garth.dump()`.~~
    **Done** — `garth.dump()` was already dead code (removed in the
    2026-04-30 QA pass). Token persistence now happens through
@@ -129,6 +128,14 @@ cloud sync) or assumptions of local trust on the user's own machine.
   `pyproject.toml` carry next-major upper bounds. See E5 above for
   residual risk and the `## Reproducible install` section of the
   root README for usage.
+- ✅ **XML DoS hardening (originally finding #1 / T1, D1).** Added a
+  50 MB file-size cap in `gpx_parser.parse_gpx` (primary defense) and
+  a `defusedxml.ElementTree.fromstring` validation pass (defense in
+  depth) that rejects entity-expansion bombs before gpxpy sees them.
+  `defusedxml>=0.7,<1` added as a direct dependency and pinned in the
+  lockfile.
+- ✅ **Narrowed token-resume except (originally finding #3 / E6).**
+  See E6 row above.
 - ✅ **Token persistence fixed (originally finding #2 / S2, I2).**
   `client.garth.dump()` was dead code (the `.garth` attribute was
   removed in garminconnect ≥ 0.3); the call was being silently

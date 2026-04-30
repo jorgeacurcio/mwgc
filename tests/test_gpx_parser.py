@@ -120,3 +120,43 @@ def test_raises_on_missing_file(tmp_path):
     missing = tmp_path / "does_not_exist.gpx"
     with pytest.raises(FileNotFoundError):
         parse_gpx(missing)
+
+
+# ---------- XML DoS hardening (R13) ----------
+
+
+def test_oversized_file_raises_gpx_parse_error(tmp_path, monkeypatch):
+    from mwgc import gpx_parser
+
+    # Drop the cap to a tiny number so we don't have to write a 50MB file.
+    monkeypatch.setattr(gpx_parser, "MAX_GPX_SIZE_BYTES", 100)
+
+    big = tmp_path / "huge.gpx"
+    big.write_text("x" * 200)
+    with pytest.raises(GpxParseError, match="too large"):
+        parse_gpx(big)
+
+
+def test_entity_bomb_is_rejected(tmp_path):
+    """Billion-laughs style entity expansion must be refused before parsing."""
+    bomb = tmp_path / "bomb.gpx"
+    bomb.write_text(
+        '<?xml version="1.0"?>\n'
+        '<!DOCTYPE lolz [\n'
+        '  <!ENTITY lol "lol">\n'
+        '  <!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;">\n'
+        '  <!ENTITY lol3 "&lol2;&lol2;&lol2;&lol2;&lol2;">\n'
+        ']>\n'
+        '<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">'
+        '<name>&lol3;</name>'
+        '</gpx>\n'
+    )
+    with pytest.raises(GpxParseError, match="forbidden XML entities"):
+        parse_gpx(bomb)
+
+
+def test_normal_file_at_or_under_size_cap_parses(tmp_path):
+    """Sanity: a normal GPX well under the cap parses without issue."""
+    # The shipped fixture is ~5 KB; the default cap is 50 MB.
+    points, _ = parse_gpx(FIXTURE)
+    assert len(points) == 8

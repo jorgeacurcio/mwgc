@@ -127,7 +127,7 @@ bottom; mark a box only when its acceptance criteria pass.
     during `client.login()` propagates rather than falling back to
     interactive login.
 
-- [ ] 23. **XML DoS hardening** _(R13)_
+- [x] 23. **XML DoS hardening** _(R13)_
   - Add `defusedxml>=0.7,<1` to `pyproject.toml` dependencies.
   - In `gpx_parser.parse_gpx`, add a file-size guard (raise
     `GpxParseError` if `path.stat().st_size > 50 * 1024 * 1024`).
