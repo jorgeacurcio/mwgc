@@ -5,5 +5,5 @@ FENIX_5_PLUS = DeviceProfile(
     product="fenix5_plus",
     product_id=3110,
     serial_number=3_141_592_653,
-    software_version=16.0,
+    software_version=19.30,
 )

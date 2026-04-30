@@ -128,7 +128,10 @@ def _file_id(profile: DeviceProfile, t0_ms: int) -> FileIdMessage:
 
 def _file_creator(software_version: float) -> FileCreatorMessage:
     m = FileCreatorMessage()
-    m.software_version = software_version
+    # FIT software_version is a uint16 stored as major*100 + minor
+    # (e.g. 19.30 → 1930).  fit-tool does not apply any scale factor,
+    # so we convert here to avoid truncation.
+    m.software_version = round(software_version * 100)
     return m
 
 
@@ -139,6 +142,8 @@ def _device_info(profile: DeviceProfile, t0_ms: int) -> DeviceInfoMessage:
     m.manufacturer = Manufacturer.GARMIN.value
     m.garmin_product = profile.product_id
     m.serial_number = profile.serial_number
+    # device_info.software_version has a built-in ×100 scale in fit-tool's
+    # profile, so pass the human-readable float and fit-tool encodes it correctly.
     m.software_version = profile.software_version
     return m
 

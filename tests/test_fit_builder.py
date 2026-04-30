@@ -68,7 +68,8 @@ def test_file_id_identifies_fenix_5_plus(built_fit):
 def test_file_creator_software_version(built_fit):
     decoded = FitFile.from_file(str(built_fit))
     [fc] = _messages_of(decoded, FileCreatorMessage)
-    assert fc.software_version == FENIX_5_PLUS.software_version
+    # FIT stores software_version as uint16 major*100+minor (e.g. 19.30 → 1930).
+    assert fc.software_version == round(FENIX_5_PLUS.software_version * 100)
 
 
 def test_device_info_present(built_fit):

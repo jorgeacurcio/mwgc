@@ -20,7 +20,7 @@ bottom; mark a box only when its acceptance criteria pass.
 - [x] 3. **Device profile** _(R2)_
   - Implement `mwgc.devices.FENIX_5_PLUS` with manufacturer=`garmin`,
     product=`fenix5_plus`, product_id=3110, stable placeholder serial,
-    software_version=16.0.
+    software_version=19.30.
 
 - [x] 4. **GPX parser** _(R1.1, R1.2, R1.3, R1.4, R3.4, R7.1, R7.2)_
   - Implement `mwgc.gpx_parser.parse_gpx(path) -> tuple[list[TrackPoint], datetime]`.
