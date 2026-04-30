@@ -119,27 +119,13 @@ A single window with a GPX file picker, an output FIT path, a
 area. The GUI reuses the same conversion and upload pipeline as the
 CLI; the only difference is where credentials come from.
 
-The GUI reads Garmin credentials from a TOML config file at
-`~/.mwgc/config.toml`:
+On the first upload the GUI shows a small modal dialog asking for your
+Garmin Connect email, then your password (masked).  On success the OAuth
+tokens are written to `~/.garminconnect/` and reused on every subsequent
+run — you won't be prompted again until they expire.
 
-```toml
-[garmin]
-email = "you@example.com"
-password = "your-password"
-```
-
-If the file is missing and you click Run with upload enabled, the GUI
-shows an error dialog explaining what to put where and aborts. With
-"Skip upload" ticked, the config file is not required.
-
-If your Garmin account has MFA enabled, a small modal dialog appears
-during login asking for the code. Cancelling it cancels the run.
-
-> The password is stored in plaintext. Don't commit `~/.mwgc/` to a
-> repo and don't sync it via cloud-drive software. On macOS / Linux
-> the file is `chmod 600` automatically; on Windows it relies on the
-> per-user profile ACL. OS keyring integration is in the v1.1
-> backlog.
+If your account has MFA enabled, a second dialog appears for the code.
+Cancelling any dialog cancels the run cleanly.
 
 ### Exit codes
 
@@ -214,9 +200,9 @@ You installed without the GUI extra. Run `pip install -e ".[gui]"`
 progress. If something hung, close and reopen the window — the worker
 thread is a daemon, so closing the window kills it.
 
-**GUI says "config file not found".** Create
-`~/.mwgc/config.toml` with the format shown in the GUI section
-above. Or click "Skip upload" if you only want to convert.
+**GUI's credential dialog never appears on re-runs.** That's normal —
+the OAuth tokens are cached in `~/.garminconnect/` after the first
+successful login. Delete that directory to force a fresh login.
 
 **GUI's MFA dialog never appears.** It only fires when Garmin asks
 for one. If your account has MFA enabled and you don't see a dialog,

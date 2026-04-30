@@ -69,7 +69,7 @@ continues from the CLI spec for clarity (12+).
     troubleshooting (missing customtkinter, missing config,
     cancelled MFA).
 
-- [ ] 17. **Manual GUI QA** _(all)_
+- [x] 17. **Manual GUI QA** _(all)_
   - Launch `mwgc-gui` against the same real MyWhoosh GPX used by
     CLI task 10.
   - Verify: file pickers work, progress bar moves, log is

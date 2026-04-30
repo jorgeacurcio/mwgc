@@ -32,6 +32,22 @@ garminconnect handles persistence itself.)*
 
 ---
 
-## GUI — task 17
+## GUI — task 17 (2026-04-30)
 
-*Pending — to be completed once token cache is warm from the CLI run above.*
+**Command:** `.venv\Scripts\mwgc-gui.exe`
+
+**Verified:**
+- Window opens cleanly (no config-file error) ✅
+- Browse picker selects GPX; FIT path auto-fills ✅
+- Skip upload run: progress bar moves through convert stages, log ends with "Upload skipped" ✅
+- Upload run: uses cached tokens from `~/.garminconnect/`, no credential dialogs shown,
+  log ends with "Already on Garmin Connect (duplicate)" (expected — ride already uploaded
+  via CLI task 10) ✅
+- Run button disabled during run, re-enabled on completion ✅
+
+**Design change made during QA:** the original GUI required a plaintext
+`~/.mwgc/config.toml` for credentials. Changed to dialog-based prompting
+(`_DialogPrompter`) that pops a modal for email / password / MFA only when
+the token cache is absent or expired — matching the CLI behaviour.
+The `config.py` module is retained (used by `save_config` in other contexts)
+but the GUI no longer reads it.

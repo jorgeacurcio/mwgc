@@ -8,28 +8,31 @@ from tkinter import filedialog, messagebox
 import customtkinter as ctk
 
 from mwgc import core
-from mwgc.config import Config, load_config
-from mwgc.errors import AuthError, ConfigError, MwgcError
+from mwgc.errors import AuthError, MwgcError
 from mwgc.models import ConversionResult
-from mwgc.prompter import Prompter
 from mwgc.uploader import UploadOutcome
 
 
-class ConfigPrompter:
-    """Prompter that pulls credentials from a Config and defers MFA to a callback."""
+class _DialogPrompter:
+    """Prompter that asks the UI thread for credentials via modal dialogs.
 
-    def __init__(self, config: Config, mfa_callback):
-        self._config = config
-        self._mfa_callback = mfa_callback
+    Safe to call from the worker thread: each method blocks until the user
+    submits or cancels.  Cancelling raises AuthError so the worker stops
+    cleanly.
+    """
+
+    def __init__(self, request_fn):
+        # request_fn(prompt, secret) -> str, raises AuthError on cancel
+        self._request = request_fn
 
     def email(self) -> str:
-        return self._config.garmin_email
+        return self._request("Garmin Connect email:", secret=False)
 
     def password(self) -> str:
-        return self._config.garmin_password
+        return self._request("Garmin Connect password:", secret=True)
 
     def mfa(self) -> str:
-        return self._mfa_callback()
+        return self._request("MFA code from your authenticator app:", secret=False)
 
 
 class App:
@@ -40,7 +43,7 @@ class App:
         self.root.title("mwgc — MyWhoosh to Garmin Connect")
         self.root.geometry("720x520")
 
-        self._mfa_response: queue.Queue[str | None] = queue.Queue()
+        self._credential_response: queue.Queue[str | None] = queue.Queue()
         self._build_widgets()
 
     def _build_widgets(self) -> None:
@@ -119,14 +122,6 @@ class App:
         fit = self.fit_entry.get().strip() or None
         skip_upload = self.skip_upload_var.get()
 
-        config: Config | None = None
-        if not skip_upload:
-            try:
-                config = load_config()
-            except ConfigError as e:
-                messagebox.showerror("mwgc — config error", str(e))
-                return
-
         self._set_running(True)
         self.progress.set(0.0)
         self.log.delete("1.0", tk.END)
@@ -134,23 +129,15 @@ class App:
 
         worker = threading.Thread(
             target=self._run_worker,
-            args=(gpx, fit, skip_upload, config),
+            args=(gpx, fit, skip_upload),
             daemon=True,
         )
         worker.start()
 
     # ---- worker ----
 
-    def _run_worker(
-        self,
-        gpx: str,
-        fit: str | None,
-        skip_upload: bool,
-        config: Config | None,
-    ) -> None:
-        prompter: Prompter | None = None
-        if config is not None:
-            prompter = ConfigPrompter(config, mfa_callback=self._request_mfa_blocking)
+    def _run_worker(self, gpx: str, fit: str | None, skip_upload: bool) -> None:
+        prompter = _DialogPrompter(self._request_credential_blocking)
 
         try:
             result, outcome = core.run(
@@ -173,44 +160,46 @@ class App:
         # Called from the worker thread; bounce to UI thread before touching widgets.
         self.root.after(0, self._update_progress, stage, fraction)
 
-    # ---- MFA bridge ----
+    # ---- credential / MFA bridge ----
 
-    def _request_mfa_blocking(self) -> str:
-        """Worker-thread side: ask the UI for an MFA code and block until it arrives."""
-        while not self._mfa_response.empty():
-            self._mfa_response.get_nowait()
-        self.root.after(0, self._show_mfa_dialog)
-        code = self._mfa_response.get()
-        if code is None:
-            raise AuthError("MFA cancelled by user")
-        return code
+    def _request_credential_blocking(self, prompt: str, secret: bool) -> str:
+        """Worker-thread side: ask the UI for a value and block until it arrives."""
+        while not self._credential_response.empty():
+            self._credential_response.get_nowait()
+        self.root.after(0, self._show_credential_dialog, prompt, secret)
+        value = self._credential_response.get()
+        if value is None:
+            raise AuthError("Login cancelled by user")
+        return value
 
-    def _show_mfa_dialog(self) -> None:
+    def _show_credential_dialog(self, prompt: str, secret: bool) -> None:
         dialog = ctk.CTkToplevel(self.root)
-        dialog.title("Garmin Connect MFA")
-        dialog.geometry("320x150")
+        dialog.title("Garmin Connect")
+        dialog.geometry("360x160")
         dialog.transient(self.root)
         dialog.grab_set()
 
-        ctk.CTkLabel(
-            dialog, text="Enter the MFA code from your Garmin app:"
-        ).pack(padx=16, pady=(16, 6))
-        entry = ctk.CTkEntry(dialog, width=200)
+        ctk.CTkLabel(dialog, text=prompt).pack(padx=16, pady=(16, 6))
+        entry = ctk.CTkEntry(dialog, width=240, show="*" if secret else "")
         entry.pack(padx=16, pady=4)
         entry.focus_set()
 
         def submit():
-            self._mfa_response.put(entry.get().strip())
+            self._credential_response.put(entry.get().strip())
             dialog.destroy()
 
         def cancel():
-            self._mfa_response.put(None)
+            self._credential_response.put(None)
             dialog.destroy()
 
         button_row = ctk.CTkFrame(dialog, fg_color="transparent")
         button_row.pack(pady=10)
-        ctk.CTkButton(button_row, text="OK", width=80, command=submit).pack(side="left", padx=6)
-        ctk.CTkButton(button_row, text="Cancel", width=80, command=cancel).pack(side="left", padx=6)
+        ctk.CTkButton(button_row, text="OK", width=80, command=submit).pack(
+            side="left", padx=6
+        )
+        ctk.CTkButton(button_row, text="Cancel", width=80, command=cancel).pack(
+            side="left", padx=6
+        )
         entry.bind("<Return>", lambda _e: submit())
         dialog.protocol("WM_DELETE_WINDOW", cancel)
 

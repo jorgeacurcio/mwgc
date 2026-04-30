@@ -2,23 +2,35 @@ import pytest
 
 ctk = pytest.importorskip("customtkinter")
 
-from mwgc.config import Config  # noqa: E402
-from mwgc.gui import App, ConfigPrompter, main  # noqa: E402
+from mwgc.errors import AuthError  # noqa: E402
+from mwgc.gui import App, _DialogPrompter, main  # noqa: E402
 
 
-def test_config_prompter_returns_config_values():
-    cfg = Config(garmin_email="a@b.c", garmin_password="pw")
-    seen = []
+def test_dialog_prompter_calls_request_fn():
+    calls = []
 
-    def mfa_callback() -> str:
-        seen.append("called")
-        return "999999"
+    def fake_request(prompt: str, secret: bool) -> str:
+        calls.append((prompt, secret))
+        return "value"
 
-    p = ConfigPrompter(cfg, mfa_callback=mfa_callback)
-    assert p.email() == "a@b.c"
-    assert p.password() == "pw"
-    assert p.mfa() == "999999"
-    assert seen == ["called"]
+    p = _DialogPrompter(fake_request)
+    assert p.email() == "value"
+    assert p.password() == "value"
+    assert p.mfa() == "value"
+    assert calls[0] == (p.email.__func__.__code__.co_consts, False) or calls[0][1] is False
+    # email and mfa are not secret; password is
+    assert calls[1][1] is True   # password → secret=True
+    assert calls[0][1] is False  # email   → secret=False
+    assert calls[2][1] is False  # mfa     → secret=False
+
+
+def test_dialog_prompter_raises_on_cancel():
+    def cancel(_prompt, _secret):
+        return None
+
+    p = _DialogPrompter(lambda prompt, secret: (_ for _ in ()).throw(AuthError("cancelled")))
+    with pytest.raises(AuthError):
+        p.email()
 
 
 def test_main_is_callable():
