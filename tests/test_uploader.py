@@ -266,6 +266,32 @@ def test_get_client_falls_through_when_resume_login_fails(fake_auth):
     assert client.dumped_to == str(token_dir)
 
 
+def test_get_client_falls_through_on_corrupt_token_json(fake_auth):
+    """Token files can decode to garbage — that's expected and recoverable."""
+    import json as _json
+
+    _, token_dir = fake_auth
+    token_dir.mkdir()
+    FakeGarmin.login_raises_sequence = [
+        _json.JSONDecodeError("bad", "doc", 0),
+        None,
+    ]
+    client = uploader._get_client()
+    assert len(FakeGarmin.instances) == 2
+    assert client is FakeGarmin.instances[1]
+
+
+def test_get_client_propagates_unexpected_exceptions(fake_auth):
+    """A non-token-related bug should NOT silently trigger an interactive login."""
+    _, token_dir = fake_auth
+    token_dir.mkdir()
+    FakeGarmin.login_raises_sequence = [RuntimeError("library bug"), None]
+    with pytest.raises(RuntimeError, match="library bug"):
+        uploader._get_client()
+    # No fallback was attempted — only the resume client was constructed.
+    assert len(FakeGarmin.instances) == 1
+
+
 def test_interactive_login_persists_tokens(fake_auth):
     _, token_dir = fake_auth
     client = uploader._interactive_login(token_dir)

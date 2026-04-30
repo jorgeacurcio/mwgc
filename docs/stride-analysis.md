@@ -99,7 +99,7 @@ in the current threat model.**
 | E3 | Code injection via Garmin response                                                                                     | **OK**                          | We `dict.get(...)` and check types; no `eval`. |
 | E4 | Path traversal in `--output` writes outside intended dir                                                                | **out-of-scope**                | The user picks the path; whatever they pick they had permission to write to. |
 | E5 | **Supply-chain compromise of a transitive dep** (`garth`, `garminconnect`, `curl_cffi`, `fit-tool`, `customtkinter`, …) | **mostly OK**                   | We now ship a hash-pinned `requirements.lock` covering every direct and transitive dep (33 packages). Reproducible installs (`pip install -r requirements.lock`) refuse to install a package whose hash doesn't match. Direct deps in `pyproject.toml` are bounded with both lower and next-major upper bounds. **Residual risk:** the lockfile pins versions, not vendor identity — if PyPI itself were compromised at the time of the next `pip-compile --upgrade`, a malicious version could be locked. We also haven't audited the pinned versions for known CVEs. |
-| E6 | Bare `except Exception` in `uploader._get_client` masks a security-relevant failure                                     | **fixable**                     | The broad catch is intentional ("tokens are unusable, fall back to interactive login"), but it could also swallow something important. Tightening to `(FileNotFoundError, GarminConnectAuthenticationError, OSError, json.JSONDecodeError)` would be more defensive. |
+| E6 | Bare `except Exception` in `uploader._get_client` masks a security-relevant failure                                     | **OK**                          | Narrowed to `(FileNotFoundError, GarminConnectAuthenticationError, OSError, json.JSONDecodeError)` — every other exception now propagates instead of triggering a silent fallback to interactive login. |
 
 ## Top findings, ranked
 
@@ -112,8 +112,9 @@ in the current threat model.**
    **Done** — `garth.dump()` was already dead code (removed in the
    2026-04-30 QA pass). Token persistence now happens through
    `client.login(tokenstore)`, which is garminconnect's own path. See S2.
-3. **🟢 Tighten the `_get_client` `except` clause.** Catch a specific
-   list of token-unusable exceptions rather than bare `Exception`.
+3. ~~Tighten the `_get_client` `except` clause.~~ **Done** — narrowed
+   to `(FileNotFoundError, GarminConnectAuthenticationError, OSError,
+   json.JSONDecodeError)`. See E6.
 4. **🟢 Audit error-message paths for credential leakage.**
    Specifically: does `GarminConnectAuthenticationError`'s `str(e)`
    ever contain the email or token? If so, redact before re-raising.

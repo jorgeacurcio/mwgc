@@ -119,7 +119,7 @@ bottom; mark a box only when its acceptance criteria pass.
   - Tests: monkeypatch `upload_activity` to raise a timeout exception;
     assert `UploadError` is raised and exit code is 4.
 
-- [ ] 22. **Narrow token-resume exception handling** _(R12)_
+- [x] 22. **Narrow token-resume exception handling** _(R12)_
   - In `uploader._get_client`, replace `except Exception` with
     `except (FileNotFoundError, GarminConnectAuthenticationError,
     OSError, json.JSONDecodeError)`.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import json
 import os
 from collections.abc import Callable
 from enum import Enum
@@ -125,8 +126,16 @@ def _get_client(prompter: Prompter | None = None) -> Garmin:
     client = Garmin()
     try:
         client.login(str(token_dir))
-    except Exception:
-        # Any failure here means the token cache is unusable; worst case the user re-enters creds.
+    except (
+        FileNotFoundError,
+        GarminConnectAuthenticationError,
+        OSError,
+        json.JSONDecodeError,
+    ):
+        # Token cache is unusable (missing files, expired auth, unreadable bytes,
+        # corrupt JSON) — fall through to a fresh interactive login.
+        # Other exceptions (e.g. RuntimeError, ValueError) likely indicate a real
+        # bug in garminconnect/garth and should propagate so the user sees them.
         return _interactive_login(token_dir, prompter)
     return client
 
