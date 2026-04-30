@@ -69,6 +69,36 @@ def test_missing_cadence_yields_none():
     assert points[5].cadence == 91
 
 
+def test_temperature_parsed_from_atemp():
+    # Every point in the fixture has atemp=22.0.
+    points, _ = parse_gpx(FIXTURE)
+    assert all(p.temperature_c == 22.0 for p in points)
+
+
+def test_missing_atemp_yields_none(tmp_path):
+    # A GPX without atemp should give temperature_c=None on every point.
+    gpx = tmp_path / "no_temp.gpx"
+    gpx.write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1"'
+        ' xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">'
+        "<trk><trkseg>"
+        '<trkpt lat="0" lon="0"><ele>0</ele><time>2026-01-01T00:00:00Z</time>'
+        "<extensions><gpxtpx:TrackPointExtension>"
+        "<gpxtpx:hr>140</gpxtpx:hr>"
+        "</gpxtpx:TrackPointExtension></extensions>"
+        "</trkpt>"
+        '<trkpt lat="0.001" lon="0"><ele>0</ele><time>2026-01-01T00:00:01Z</time>'
+        "<extensions><gpxtpx:TrackPointExtension>"
+        "<gpxtpx:hr>141</gpxtpx:hr>"
+        "</gpxtpx:TrackPointExtension></extensions>"
+        "</trkpt>"
+        "</trkseg></trk></gpx>"
+    )
+    points, _ = parse_gpx(gpx)
+    assert all(p.temperature_c is None for p in points)
+
+
 def test_raises_on_zero_trackpoints(tmp_path):
     empty = tmp_path / "empty.gpx"
     empty.write_text(

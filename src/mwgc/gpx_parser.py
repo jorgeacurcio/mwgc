@@ -46,6 +46,7 @@ def parse_gpx(path: Path | str) -> tuple[list[TrackPoint], datetime]:
                 power_w=ext["power_w"],
                 speed_mps=pt.speed,
                 distance_m=cumulative,
+                temperature_c=ext["temperature_c"],
             )
         )
 
@@ -58,8 +59,13 @@ def _to_utc(t: datetime) -> datetime:
     return t.astimezone(UTC)
 
 
-def _extract_extensions(extensions: list[Element]) -> dict[str, int | None]:
-    result: dict[str, int | None] = {"heart_rate": None, "cadence": None, "power_w": None}
+def _extract_extensions(extensions: list[Element]) -> dict[str, int | float | None]:
+    result: dict[str, int | float | None] = {
+        "heart_rate": None,
+        "cadence": None,
+        "power_w": None,
+        "temperature_c": None,
+    }
     for ext in extensions:
         for elem in ext.iter():
             tag = _local_name(elem.tag).lower()
@@ -73,6 +79,8 @@ def _extract_extensions(extensions: list[Element]) -> dict[str, int | None]:
                     result["cadence"] = int(float(text))
                 elif tag in {"power", "powerinwatts"}:
                     result["power_w"] = int(float(text))
+                elif tag == "atemp":
+                    result["temperature_c"] = float(text)
             except ValueError:
                 continue
     return result

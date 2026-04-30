@@ -16,6 +16,7 @@ class TrackPoint:
     power_w: int | None
     speed_mps: float | None
     distance_m: float | None
+    temperature_c: float | None = None
 
 
 @dataclass(frozen=True)

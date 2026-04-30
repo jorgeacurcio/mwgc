@@ -100,7 +100,7 @@ bottom; mark a box only when its acceptance criteria pass.
   - Document `--latest DIR` usage, the `~/.mwgc/history.json` file, and
     exit code 6.
 
-- [ ] 20. **Temperature forwarding** _(R10)_
+- [x] 20. **Temperature forwarding** _(R10)_
   - Add `temperature_c: float | None = None` to `TrackPoint` (frozen
     dataclass default keeps existing callers working).
   - In `gpx_parser._extract_extensions`, parse `atemp` → `temperature_c`.

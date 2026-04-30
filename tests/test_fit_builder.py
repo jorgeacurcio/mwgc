@@ -95,6 +95,8 @@ def test_first_record_metrics(built_fit):
     assert first.power == 180
     assert first.position_lat == pytest.approx(41.5, abs=1e-4)
     assert first.position_long == pytest.approx(-8.4, abs=1e-4)
+    # Every fixture point has atemp=22.0 → FIT temperature should be 22.
+    assert first.temperature == 22
 
 
 def test_missing_metrics_remain_absent(built_fit):
@@ -103,6 +105,24 @@ def test_missing_metrics_remain_absent(built_fit):
     records = _messages_of(decoded, RecordMessage)
     assert records[3].power is None
     assert records[4].cadence is None
+
+
+def test_temperature_absent_when_not_in_gpx(tmp_path, points):
+    # Build a FIT from points that have no temperature_c set.
+    no_temp_points = [
+        p.__class__(
+            time=p.time, lat=p.lat, lon=p.lon, altitude_m=p.altitude_m,
+            heart_rate=p.heart_rate, cadence=p.cadence, power_w=p.power_w,
+            speed_mps=p.speed_mps, distance_m=p.distance_m,
+            temperature_c=None,
+        )
+        for p in points
+    ]
+    out = tmp_path / "no_temp.fit"
+    build_fit(no_temp_points, FENIX_5_PLUS, out)
+    decoded = FitFile.from_file(str(out))
+    records = _messages_of(decoded, RecordMessage)
+    assert all(r.temperature is None for r in records)
 
 
 def test_timer_events_bracket_records(built_fit):

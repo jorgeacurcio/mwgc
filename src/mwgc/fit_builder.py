@@ -175,6 +175,8 @@ def _record(p: TrackPoint) -> RecordMessage:
         m.speed = p.speed_mps
     if p.distance_m is not None:
         m.distance = p.distance_m
+    if p.temperature_c is not None:
+        m.temperature = round(p.temperature_c)
     return m
 
 
