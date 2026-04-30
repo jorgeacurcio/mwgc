@@ -87,8 +87,10 @@ bottom; mark a box only when its acceptance criteria pass.
 
 ## Out of scope for v1 (tracked, not built)
 
-- GUI front-end — `core.run` already accepts `on_progress`, so the GUI
-  task is purely UI work later.
+- GUI front-end — moved to its own spec under
+  [`../mywhoosh-to-garmin-gui/`](../mywhoosh-to-garmin-gui/). Builds
+  on `core.run`'s `on_progress` callback and a new `Prompter`
+  protocol; no changes to the CLI flow.
 - Batch / folder watcher.
 - Configurable serial number via env var (`MWGC_SERIAL`).
 - Calorie estimate refinement beyond the simple work-kJ method.
