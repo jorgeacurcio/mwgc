@@ -213,6 +213,11 @@ The Kiro-style spec under [`.kiro/specs/mywhoosh-to-garmin/`](.kiro/specs/mywhoo
 is the source of truth for behavior. If you're changing how mwgc works,
 update the spec first and the code second.
 
+A point-in-time STRIDE threat analysis lives at
+[`docs/stride-analysis.md`](docs/stride-analysis.md). Re-run it when
+adding a new external input source, a network listener, a plugin
+mechanism, or a credential-handling dependency.
+
 ## Out of scope (v1)
 
 - GUI Settings dialog for entering / editing credentials in-app
