@@ -110,8 +110,3 @@ def test_core_does_not_write_to_stdout_or_stderr(tmp_path, capsys):
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == ""
-
-
-def test_uploader_stub_raises_until_task_7():
-    with pytest.raises(NotImplementedError, match="task 7"):
-        uploader.upload(Path("ignored.fit"))
