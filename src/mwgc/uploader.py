@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import contextlib
+import getpass
 from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
 from typing import Any
 
 from garminconnect import (
+    Garmin,
     GarminConnectAuthenticationError,
     GarminConnectConnectionError,
     GarminConnectInvalidFileFormatError,
@@ -27,7 +30,13 @@ def upload(
     on_progress: ProgressCallback | None = None,
 ) -> UploadOutcome:
     client = _get_client()
-    return _perform_upload(client, fit_path, on_progress=on_progress)
+    try:
+        return _perform_upload(client, fit_path, on_progress=on_progress)
+    except AuthError:
+        # Cached tokens may have expired between resume and upload (R4.4).
+        # Force a fresh interactive login and retry exactly once.
+        client = _interactive_login(_default_token_dir())
+        return _perform_upload(client, fit_path, on_progress=on_progress)
 
 
 def _perform_upload(
@@ -97,5 +106,46 @@ def _is_duplicate_response(response: object) -> bool:
     return False
 
 
-def _get_client() -> Any:
-    raise NotImplementedError("authenticated client setup is implemented in task 8")
+def _get_client() -> Garmin:
+    """Return an authenticated Garmin client, resuming from cached tokens if any."""
+    token_dir = _default_token_dir()
+    if not token_dir.exists():
+        return _interactive_login(token_dir)
+    client = Garmin()
+    try:
+        client.login(str(token_dir))
+    except Exception:
+        # Any failure here means the token cache is unusable; worst case the user re-enters creds.
+        return _interactive_login(token_dir)
+    return client
+
+
+def _interactive_login(token_dir: Path) -> Garmin:
+    """Prompt for credentials, run a fresh login, persist tokens on success."""
+    email = _prompt_email()
+    password = _prompt_password()
+    client = Garmin(email=email, password=password, prompt_mfa=_prompt_mfa)
+    try:
+        client.login()
+    except GarminConnectAuthenticationError as e:
+        raise AuthError(str(e)) from e
+    token_dir.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(Exception):
+        client.garth.dump(str(token_dir))
+    return client
+
+
+def _default_token_dir() -> Path:
+    return Path.home() / ".garminconnect"
+
+
+def _prompt_email() -> str:
+    return input("Garmin Connect email: ").strip()
+
+
+def _prompt_password() -> str:
+    return getpass.getpass("Garmin Connect password: ")
+
+
+def _prompt_mfa() -> str:
+    return input("Garmin Connect MFA code: ").strip()
