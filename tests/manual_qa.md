@@ -45,7 +45,28 @@ garminconnect handles persistence itself.)*
   via CLI task 10) ✅
 - Run button disabled during run, re-enabled on completion ✅
 
-**Design change made during QA:** the original GUI required a plaintext
+---
+
+## `--latest` + history — task 18/19 (2026-04-30)
+
+**Commands tested (PowerShell):**
+```powershell
+# First run after clearing history → uploaded / duplicate
+.venv\Scripts\mwgc.exe --latest "C:\Users\Jorge Acúrcio\Downloads"
+
+# Second run → history hit, exit 6
+.venv\Scripts\mwgc.exe --latest "C:\Users\Jorge Acúrcio\Downloads"
+```
+
+**Verified:**
+- Picks the most recent `.gpx` in the directory automatically ✅
+- Uploads (or reports duplicate) on first run ✅
+- Prints "Already uploaded, skipping" and exits 6 on second run ✅
+- `~/.mwgc/history.json` written with the activity start time ✅
+
+---
+
+**Design change made during GUI QA:** the original GUI required a plaintext
 `~/.mwgc/config.toml` for credentials. Changed to dialog-based prompting
 (`_DialogPrompter`) that pops a modal for email / password / MFA only when
 the token cache is absent or expired — matching the CLI behaviour.
