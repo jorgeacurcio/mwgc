@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
@@ -128,14 +127,15 @@ def _interactive_login(token_dir: Path, prompter: Prompter | None = None) -> Gar
     prompter = prompter or StdinPrompter()
     email = prompter.email()
     password = prompter.password()
+    token_dir.mkdir(parents=True, exist_ok=True)
     client = Garmin(email=email, password=password, prompt_mfa=prompter.mfa)
     try:
-        client.login()
+        # Passing token_dir tells garminconnect to persist the OAuth tokens
+        # there after a successful login, so subsequent runs can resume without
+        # re-entering credentials.
+        client.login(str(token_dir))
     except GarminConnectAuthenticationError as e:
         raise AuthError(str(e)) from e
-    token_dir.mkdir(parents=True, exist_ok=True)
-    with contextlib.suppress(Exception):
-        client.garth.dump(str(token_dir))
     return client
 
 

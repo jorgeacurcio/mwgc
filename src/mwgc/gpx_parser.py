@@ -68,11 +68,11 @@ def _extract_extensions(extensions: list[Element]) -> dict[str, int | None]:
                 continue
             try:
                 if tag == "hr":
-                    result["heart_rate"] = int(text)
+                    result["heart_rate"] = int(float(text))
                 elif tag == "cad":
-                    result["cadence"] = int(text)
+                    result["cadence"] = int(float(text))
                 elif tag in {"power", "powerinwatts"}:
-                    result["power_w"] = int(text)
+                    result["power_w"] = int(float(text))
             except ValueError:
                 continue
     return result

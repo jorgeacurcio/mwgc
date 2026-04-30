@@ -1,0 +1,37 @@
+# Manual QA log
+
+## CLI — task 10 (2026-04-30)
+
+**GPX source:** real MyWhoosh export, ride "Mompox City"
+(`F7Km5OLATQyZwSQc99BPVpwGEOWNKz272AQeu0Zv.gpx`)
+
+**Command:**
+```
+python -m mwgc --input <gpx-path>
+```
+
+**Conversion output:** 1934 points, 1935 s, 13 458 m  
+**FIT size:** 41 KB  
+**Garmin Connect activity:** https://connect.garmin.com/app/activity/22718269601
+
+**Verified on Garmin Connect:**
+- Activity visible, sport = cycling (virtual)
+- HR graph ✅
+- Cadence graph ✅
+- Power graph ✅  *(required a bug-fix: MyWhoosh exports power as float strings
+  e.g. `<power>180.0</power>`; parser was doing `int(text)` which raised
+  `ValueError` and silently dropped all power readings. Fixed to
+  `int(float(text))` — see commit for details.)*
+
+**Token caching:** first run prompted for credentials; subsequent runs reuse
+cached tokens in `~/.garminconnect/` automatically.  
+*(A second bug was found and fixed: `_interactive_login` was calling
+`client.garth.dump()` which no longer exists in garminconnect ≥ 0.3.
+Fix: pass the token dir to `client.login(tokenstore)` directly so
+garminconnect handles persistence itself.)*
+
+---
+
+## GUI — task 17
+
+*Pending — to be completed once token cache is warm from the CLI run above.*

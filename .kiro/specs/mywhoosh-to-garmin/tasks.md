@@ -72,7 +72,7 @@ bottom; mark a box only when its acceptance criteria pass.
   - Smoke test: invoke as module against the fixture with `--no-upload`,
     assert `.fit` written and exit code 0.
 
-- [ ] 10. **End-to-end manual test** _(all)_
+- [x] 10. **End-to-end manual test** _(all)_
   - Run against a real MyWhoosh GPX with upload enabled.
   - Verify the activity appears on Garmin Connect with: correct device
     (Fenix 5 Plus), sport=cycling, totals match the source file, HR /

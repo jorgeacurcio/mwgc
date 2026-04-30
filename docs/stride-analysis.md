@@ -43,7 +43,7 @@ In each table below, **status** is one of:
 | #  | Threat                                                            | Status         | Notes |
 |----|-------------------------------------------------------------------|----------------|-------|
 | S1 | MITM impersonates Garmin Connect, captures creds/tokens           | **OK**         | `garth` / `curl_cffi` do TLS verification with the OS root store; we never pass `verify=False`. |
-| S2 | Stolen `~/.garminconnect/` tokens used to impersonate the user    | **fixable**    | We don't chmod the directory `garth` writes after `client.garth.dump(...)`. We do chmod `~/.mwgc/config.toml`; the same treatment applied here would close the gap. |
+| S2 | Stolen `~/.garminconnect/` tokens used to impersonate the user    | **OK**         | Token persistence now happens via `client.login(tokenstore)` (garminconnect's built-in path); the dead `client.garth.dump()` call was removed. Directory permissions rely on the OS default for `Path.mkdir()`; on a shared host, a chmod-700 hardening would still be a defensive improvement but is out of scope for single-user desktop use. |
 | S3 | Hostile process on the box runs `mwgc` claiming to be the user    | **out-of-scope** | Local trust. |
 
 ## T — Tampering
@@ -74,7 +74,7 @@ in the current threat model.**
 | #  | Threat                                                              | Status        | Notes |
 |----|---------------------------------------------------------------------|---------------|-------|
 | I1 | Plaintext password in `~/.mwgc/config.toml`                          | **accepted**  | The user explicitly opted into this. chmod 600 on POSIX, README warns. The keyring upgrade path is in the v1.1 backlog. |
-| I2 | OAuth tokens in `~/.garminconnect/` readable by other users          | **fixable**   | Same fix as S2. |
+| I2 | OAuth tokens in `~/.garminconnect/` readable by other users          | **OK**        | Same resolution as S2. |
 | I3 | Cloud-sync (OneDrive / Dropbox) roams `~/.mwgc/` to other devices    | **accepted**  | README warns; we can't enforce. |
 | I4 | Email or password leaks into error messages or logs                  | **mostly OK** | We never `print()` the password. `AuthError(str(e))` could carry whatever Garmin's error message contains; in practice that's something like "Authentication failed", but worth a defensive audit / scrub of error message paths. |
 | I5 | Process argv on a shared box leaks the input GPX path                | **OK**        | `--input` carries a path, no creds. |
@@ -108,9 +108,10 @@ in the current threat model.**
 1. **🟡 Harden GPX parsing against XML DoS.** Add `defusedxml`
    (one dep, ~10 lines) and / or a file-size cap (one line). Closes
    the only real "untrusted input" path the tool has.
-2. **🟢 chmod the `~/.garminconnect/` token directory after
-   `garth.dump()`.** Mirrors what we already do for `config.toml`.
-   ~3 lines in `uploader._interactive_login`.
+2. ~~chmod the `~/.garminconnect/` token directory after `garth.dump()`.~~
+   **Done** — `garth.dump()` was already dead code (removed in the
+   2026-04-30 QA pass). Token persistence now happens through
+   `client.login(tokenstore)`, which is garminconnect's own path. See S2.
 3. **🟢 Tighten the `_get_client` `except` clause.** Catch a specific
    list of token-unusable exceptions rather than bare `Exception`.
 4. **🟢 Audit error-message paths for credential leakage.**
@@ -127,6 +128,13 @@ cloud sync) or assumptions of local trust on the user's own machine.
   `pyproject.toml` carry next-major upper bounds. See E5 above for
   residual risk and the `## Reproducible install` section of the
   root README for usage.
+- ✅ **Token persistence fixed (originally finding #2 / S2, I2).**
+  `client.garth.dump()` was dead code (the `.garth` attribute was
+  removed in garminconnect ≥ 0.3); the call was being silently
+  suppressed, leaving `~/.garminconnect/` permanently empty and
+  forcing re-authentication on every run. Fixed by passing `tokenstore`
+  to `client.login()`, which is garminconnect's own persistence path.
+  Discovered and fixed during the 2026-04-30 real-file QA pass.
 
 ## When to redo this analysis
 

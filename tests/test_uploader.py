@@ -179,7 +179,6 @@ class FakeGarmin:
         self.dumped_to: str | None = None
         self._idx = len(FakeGarmin.instances)
         FakeGarmin.instances.append(self)
-        self.garth = _FakeGarth(self)
 
     def login(self, tokenstore=None):
         self.login_calls.append(tokenstore)
@@ -187,6 +186,10 @@ class FakeGarmin:
             exc = FakeGarmin.login_raises_sequence[self._idx]
             if exc is not None:
                 raise exc
+        # Mirror what garminconnect does: persist tokens when a tokenstore path
+        # is given and this is an interactive (credentialled) client.
+        if tokenstore and self.email:
+            self.dumped_to = tokenstore
         return (None, None)
 
     def upload_activity(self, path: str):
@@ -198,14 +201,6 @@ class FakeGarmin:
         if self._idx < len(FakeGarmin.upload_response_sequence):
             return FakeGarmin.upload_response_sequence[self._idx]
         return {}
-
-
-class _FakeGarth:
-    def __init__(self, parent: FakeGarmin):
-        self.parent = parent
-
-    def dump(self, path: str) -> None:
-        self.parent.dumped_to = path
 
 
 class FakePrompter:
@@ -279,7 +274,8 @@ def test_interactive_login_persists_tokens(fake_auth):
     # Garmin's prompt_mfa kw is wired to the Prompter's mfa method.
     assert callable(client.prompt_mfa)
     assert client.prompt_mfa() == "123456"
-    assert client.login_calls == [None]
+    # garminconnect persists tokens via the tokenstore arg passed to login()
+    assert client.login_calls == [str(token_dir)]
     assert client.dumped_to == str(token_dir)
 
 
