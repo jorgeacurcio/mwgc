@@ -14,14 +14,19 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+gui = [
+    "customtkinter>=5.2",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
     "ruff>=0.5",
+    "customtkinter>=5.2",
 ]
 
 [project.scripts]
 mwgc = "mwgc.cli:main"
+mwgc-gui = "mwgc.gui:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mwgc"]

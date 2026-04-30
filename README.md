@@ -4,10 +4,12 @@ Convert a [MyWhoosh](https://mywhoosh.com/) GPX export into a Garmin FIT
 activity file, stamp it with a Garmin Fenix 5 Plus identity, and upload
 it to [Garmin Connect](https://connect.garmin.com/).
 
-The CLI does one ride at a time. The architecture keeps conversion and
-upload separate from the CLI layer so a GUI can be added later without
-rewriting the core (see [`.kiro/specs/mywhoosh-to-garmin/`](.kiro/specs/mywhoosh-to-garmin/)
-for the EARS-style spec).
+Ships as a **CLI** (`mwgc`) and a desktop **GUI** (`mwgc-gui`). Both
+share the same conversion + upload pipeline. See
+[`.kiro/specs/mywhoosh-to-garmin/`](.kiro/specs/mywhoosh-to-garmin/) for
+the CLI spec and
+[`.kiro/specs/mywhoosh-to-garmin-gui/`](.kiro/specs/mywhoosh-to-garmin-gui/)
+for the GUI spec.
 
 ## Requirements
 
@@ -20,7 +22,9 @@ With [uv](https://docs.astral.sh/uv/) (recommended):
 
 ```bash
 uv venv
-uv pip install -e ".[dev]"
+uv pip install -e ".[dev]"          # CLI + dev tools (also pulls the GUI dep)
+# uv pip install -e ".[gui]"        # CLI + GUI, no test/lint tools
+# uv pip install -e .                 # CLI only
 ```
 
 With plain pip:
@@ -29,8 +33,12 @@ With plain pip:
 python -m venv .venv
 .venv\Scripts\activate          # Windows
 # source .venv/bin/activate     # macOS / Linux
-pip install -e ".[dev]"
+pip install -e ".[dev]"           # or .[gui], or just .
 ```
+
+The GUI requires `customtkinter`; it's pulled in by both the `gui` and
+`dev` extras. If you install the bare package, `mwgc-gui` will fail
+with a clean `ImportError` until you `pip install mwgc[gui]`.
 
 ## Usage
 
@@ -70,6 +78,39 @@ ride.fit written (3214 points, 3214.0s, 32114.5 m). Uploaded to Garmin Connect.
 
 `python -m mwgc ...` works too if you'd rather not rely on the
 console-script entry point.
+
+### GUI
+
+```bash
+mwgc-gui
+```
+
+A single window with a GPX file picker, an output FIT path, a
+"Skip upload" checkbox, a "Run" button, a progress bar, and a log
+area. The GUI reuses the same conversion and upload pipeline as the
+CLI; the only difference is where credentials come from.
+
+The GUI reads Garmin credentials from a TOML config file at
+`~/.mwgc/config.toml`:
+
+```toml
+[garmin]
+email = "you@example.com"
+password = "your-password"
+```
+
+If the file is missing and you click Run with upload enabled, the GUI
+shows an error dialog explaining what to put where and aborts. With
+"Skip upload" ticked, the config file is not required.
+
+If your Garmin account has MFA enabled, a small modal dialog appears
+during login asking for the code. Cancelling it cancels the run.
+
+> The password is stored in plaintext. Don't commit `~/.mwgc/` to a
+> repo and don't sync it via cloud-drive software. On macOS / Linux
+> the file is `chmod 600` automatically; on Windows it relies on the
+> per-user profile ACL. OS keyring integration is in the v1.1
+> backlog.
 
 ### Exit codes
 
@@ -136,6 +177,23 @@ hardcoded to Fenix 5 Plus (`garmin_product` enum value 3110). If you
 own a different model and want it tagged as such, edit
 [`src/mwgc/devices.py`](src/mwgc/devices.py).
 
+**`mwgc-gui` fails with `ModuleNotFoundError: No module named 'customtkinter'`.**
+You installed without the GUI extra. Run `pip install -e ".[gui]"`
+(or `".[dev]"`).
+
+**GUI's Run button stays disabled.** The previous run is still in
+progress. If something hung, close and reopen the window — the worker
+thread is a daemon, so closing the window kills it.
+
+**GUI says "config file not found".** Create
+`~/.mwgc/config.toml` with the format shown in the GUI section
+above. Or click "Skip upload" if you only want to convert.
+
+**GUI's MFA dialog never appears.** It only fires when Garmin asks
+for one. If your account has MFA enabled and you don't see a dialog,
+either Garmin reused a recent session or the worker died before
+reaching login — check the log area for an error line.
+
 ## Development
 
 Run the test suite:
@@ -157,8 +215,10 @@ update the spec first and the code second.
 
 ## Out of scope (v1)
 
-- GUI front-end (`core.run` already accepts an `on_progress` callback;
-  GUI is purely a UI task on top)
+- GUI Settings dialog for entering / editing credentials in-app
+  (today: edit `~/.mwgc/config.toml` by hand)
+- OS keyring storage for the password (today: plaintext config file)
+- Drag-and-drop GPX onto the GUI window
 - Batch processing or folder watching
 - User-configurable serial number / device profile via env var
 - More accurate calorie estimation than the cycling rule of thumb

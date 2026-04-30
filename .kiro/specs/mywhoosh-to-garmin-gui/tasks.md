@@ -4,7 +4,7 @@ Tasks are ordered for incremental delivery. Each is independently
 testable and references the requirements it satisfies. Numbering
 continues from the CLI spec for clarity (12+).
 
-- [ ] 12. **Prompter protocol + uploader refactor** _(supports R3, R4, R6)_
+- [x] 12. **Prompter protocol + uploader refactor** _(supports R3, R4, R6)_
   - Add `mwgc.prompter` with `Prompter` protocol and `StdinPrompter`
     matching the current behavior.
   - Add `ConfigError` to `mwgc.errors`.
@@ -17,7 +17,7 @@ continues from the CLI spec for clarity (12+).
   - Tests: a small `test_prompter.py` covering StdinPrompter with
     monkeypatched `input` / `getpass`.
 
-- [ ] 13. **Config module** _(R3)_
+- [x] 13. **Config module** _(R3)_
   - Implement `mwgc.config` with frozen `Config` dataclass
     (`garmin_email`, `garmin_password`), `DEFAULT_CONFIG_PATH`,
     `load_config(path=None) -> Config`,
@@ -29,7 +29,7 @@ continues from the CLI spec for clarity (12+).
   - Tests: round-trip through `tmp_path`; missing file; malformed
     TOML; missing keys; chmod on POSIX (skip on Windows).
 
-- [ ] 14. **GUI scaffold** _(R1, R2, R5, R6)_
+- [x] 14. **GUI scaffold** _(R1, R2, R5, R6)_
   - Implement `mwgc.gui` with:
     - `App` class building the main window: file entry + Browse,
       output entry + Browse, "Skip upload" checkbox, Run button,
@@ -50,7 +50,7 @@ continues from the CLI spec for clarity (12+).
     entering mainloop (gated on `customtkinter` import; skip if
     not installed).
 
-- [ ] 15. **MFA dialog** _(R4)_
+- [x] 15. **MFA dialog** _(R4)_
   - Implement an `_MfaDialog` (CTkToplevel modal) with one entry
     and OK / Cancel.
   - In `gui.App`, wire the dialog into a `_request_mfa()` method
@@ -60,7 +60,7 @@ continues from the CLI spec for clarity (12+).
     thread.
   - Tests: skipped — exercised via the manual run in task 17.
 
-- [ ] 16. **pyproject + entry point + README** _(supports R3)_
+- [x] 16. **pyproject + entry point + README** _(supports R3)_
   - Add `customtkinter>=5.2` under `[project.optional-dependencies]
     gui` (so the CLI install stays slim).
   - Add `mwgc-gui = "mwgc.gui:main"` to `[project.scripts]`.
