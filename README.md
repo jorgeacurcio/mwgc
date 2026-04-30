@@ -40,6 +40,35 @@ The GUI requires `customtkinter`; it's pulled in by both the `gui` and
 `dev` extras. If you install the bare package, `mwgc-gui` will fail
 with a clean `ImportError` until you `pip install mwgc[gui]`.
 
+### Reproducible install (locked)
+
+A hash-pinned lockfile lives at [`requirements.lock`](requirements.lock).
+It captures the exact version of every direct and transitive dependency
+plus their SHA-256 hashes, so `pip` will refuse to install anything that
+doesn't match. Use it when you want the same dependency tree the
+project was tested against (and to limit casual supply-chain risk):
+
+```bash
+pip install -r requirements.lock
+pip install -e . --no-deps
+```
+
+To regenerate after changing `pyproject.toml`:
+
+```bash
+pip install pip-tools                 # one-time
+pip-compile pyproject.toml \
+    --extra dev --extra gui \
+    --output-file requirements.lock \
+    --generate-hashes
+```
+
+To bump a single dep:
+
+```bash
+pip-compile --upgrade-package gpxpy ...   # same flags as above
+```
+
 ## Usage
 
 Convert and upload in one step:

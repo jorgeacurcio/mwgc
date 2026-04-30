@@ -98,31 +98,35 @@ in the current threat model.**
 | E2 | Code injection via `config.toml`                                                                                       | **OK**                          | `tomllib` is data-only. |
 | E3 | Code injection via Garmin response                                                                                     | **OK**                          | We `dict.get(...)` and check types; no `eval`. |
 | E4 | Path traversal in `--output` writes outside intended dir                                                                | **out-of-scope**                | The user picks the path; whatever they pick they had permission to write to. |
-| E5 | **Supply-chain compromise of a transitive dep** (`garth`, `garminconnect`, `curl_cffi`, `fit-tool`, `customtkinter`, …) | **real, partially mitigated**   | We pin lower bounds (`>=`) but no exact versions or lockfile. A malicious update to `garth` (deprecated, still on PyPI) or `curl_cffi` could exfiltrate creds at the next `pip install`. A lockfile would meaningfully reduce this. |
+| E5 | **Supply-chain compromise of a transitive dep** (`garth`, `garminconnect`, `curl_cffi`, `fit-tool`, `customtkinter`, …) | **mostly OK**                   | We now ship a hash-pinned `requirements.lock` covering every direct and transitive dep (33 packages). Reproducible installs (`pip install -r requirements.lock`) refuse to install a package whose hash doesn't match. Direct deps in `pyproject.toml` are bounded with both lower and next-major upper bounds. **Residual risk:** the lockfile pins versions, not vendor identity — if PyPI itself were compromised at the time of the next `pip-compile --upgrade`, a malicious version could be locked. We also haven't audited the pinned versions for known CVEs. |
 | E6 | Bare `except Exception` in `uploader._get_client` masks a security-relevant failure                                     | **fixable**                     | The broad catch is intentional ("tokens are unusable, fall back to interactive login"), but it could also swallow something important. Tightening to `(FileNotFoundError, GarminConnectAuthenticationError, OSError, json.JSONDecodeError)` would be more defensive. |
 
 ## Top findings, ranked
 
-These are the items worth acting on:
+### Open
 
-1. **🟡 Add a lockfile and pin direct dependencies to exact versions.**
-   The largest open attack surface is the dependency tree (`garth`,
-   `curl_cffi`, etc.). Reproducible installs cost almost nothing and
-   shut down casual supply-chain attacks.
-2. **🟡 Harden GPX parsing against XML DoS.** Add `defusedxml` (one
-   dep, ~10 lines) and / or a file-size cap (one line). Closes the
-   only real "untrusted input" path the tool has.
-3. **🟢 chmod the `~/.garminconnect/` token directory after
+1. **🟡 Harden GPX parsing against XML DoS.** Add `defusedxml`
+   (one dep, ~10 lines) and / or a file-size cap (one line). Closes
+   the only real "untrusted input" path the tool has.
+2. **🟢 chmod the `~/.garminconnect/` token directory after
    `garth.dump()`.** Mirrors what we already do for `config.toml`.
    ~3 lines in `uploader._interactive_login`.
-4. **🟢 Tighten the `_get_client` `except` clause.** Catch a specific
+3. **🟢 Tighten the `_get_client` `except` clause.** Catch a specific
    list of token-unusable exceptions rather than bare `Exception`.
-5. **🟢 Audit error-message paths for credential leakage.**
+4. **🟢 Audit error-message paths for credential leakage.**
    Specifically: does `GarminConnectAuthenticationError`'s `str(e)`
    ever contain the email or token? If so, redact before re-raising.
 
 The rest are either explicit accepted trade-offs (plaintext password,
 cloud sync) or assumptions of local trust on the user's own machine.
+
+### Done
+
+- ✅ **Lockfile + tight upper bounds (originally finding #1).** A
+  hash-pinned `requirements.lock` is committed; direct deps in
+  `pyproject.toml` carry next-major upper bounds. See E5 above for
+  residual risk and the `## Reproducible install` section of the
+  root README for usage.
 
 ## When to redo this analysis
 
@@ -139,7 +143,10 @@ Re-run STRIDE when any of the following lands:
 
 ## Reference
 
-- Analyzed at git `51d1db4` ("Tasks 14-16: CustomTkinter GUI scaffold,
-  mwgc-gui entry point, README").
-- Date: 2026-04-30.
-- Scope: `src/mwgc/**` and `pyproject.toml`. Specs and tests excluded.
+- **Original analysis:** git `51d1db4`, 2026-04-30. Scope:
+  `src/mwgc/**` and `pyproject.toml`. Specs and tests excluded.
+- **Mitigations landed since the original analysis** are tracked in
+  the **Done** subsection above. Update entries there when you act
+  on findings; flip the relevant table row's status at the same
+  time.
+- Re-run a full analysis when triggers in the next section fire.

@@ -8,20 +8,21 @@ version = "0.1.0"
 description = "Convert MyWhoosh GPX exports to Garmin FIT and upload to Garmin Connect."
 requires-python = ">=3.11"
 dependencies = [
-    "gpxpy>=1.6",
-    "garminconnect>=0.3",
-    "fit-tool>=0.9",
+    "gpxpy>=1.6,<2",
+    "garminconnect>=0.3,<0.5",
+    "fit-tool>=0.9,<1",
 ]
 
 [project.optional-dependencies]
 gui = [
-    "customtkinter>=5.2",
+    "customtkinter>=5.2,<6",
 ]
 dev = [
-    "pytest>=8.0",
-    "pytest-cov>=5.0",
-    "ruff>=0.5",
-    "customtkinter>=5.2",
+    "pytest>=8.0,<10",
+    "pytest-cov>=5.0,<8",
+    "ruff>=0.5,<1",
+    "pip-tools>=7.4",
+    "customtkinter>=5.2,<6",
 ]
 
 [project.scripts]
