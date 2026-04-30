@@ -138,7 +138,7 @@ bottom; mark a box only when its acceptance criteria pass.
   - Update `requirements.lock` after adding the dependency.
   - Update STRIDE doc: flip T1 / D1 status to **OK**.
 
-- [ ] 24. **GitHub Actions CI** _(R14)_
+- [x] 24. **GitHub Actions CI** _(R14)_
   - Create `.github/workflows/ci.yml`: trigger on push + PR, matrix
     Python 3.11 and 3.13, steps: checkout → setup-python → pip install
     `.[dev]` → ruff check → pytest.

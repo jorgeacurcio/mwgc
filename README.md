@@ -1,5 +1,7 @@
 # mwgc — MyWhoosh to Garmin Connect
 
+[![CI](https://github.com/jorgeacurcio/mwgc/actions/workflows/ci.yml/badge.svg)](https://github.com/jorgeacurcio/mwgc/actions/workflows/ci.yml)
+
 Convert a [MyWhoosh](https://mywhoosh.com/) GPX export into a Garmin FIT
 activity file, stamp it with a Garmin Fenix 5 Plus identity, and upload
 it to [Garmin Connect](https://connect.garmin.com/).

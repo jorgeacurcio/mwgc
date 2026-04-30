@@ -1,11 +1,14 @@
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-from mwgc import cli, uploader
+from mwgc import cli, history, uploader
 from mwgc.errors import AuthError, FitBuildError, UploadError
+from mwgc.gpx_parser import parse_gpx
+from mwgc.models import ConversionResult
 from mwgc.uploader import UploadOutcome
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sample_mywhoosh.gpx"
@@ -219,9 +222,6 @@ def test_input_and_latest_are_mutually_exclusive(capsys):
 
 
 def test_latest_skips_when_already_in_history(tmp_path, capsys, monkeypatch):
-    import shutil
-    from mwgc import history
-
     hist_path = tmp_path / "history.json"
     shutil.copy(FIXTURE, tmp_path / "ride.gpx")
 
@@ -229,7 +229,6 @@ def test_latest_skips_when_already_in_history(tmp_path, capsys, monkeypatch):
     monkeypatch.setattr(history, "DEFAULT_HISTORY_PATH", hist_path)
 
     # Pre-record the fixture's start time.
-    from mwgc.gpx_parser import parse_gpx
     _, start_time = parse_gpx(FIXTURE)
     history.record_upload(start_time, path=hist_path)
 
@@ -242,9 +241,6 @@ def test_latest_skips_when_already_in_history(tmp_path, capsys, monkeypatch):
 
 
 def test_latest_records_history_after_upload(tmp_path, capsys, monkeypatch):
-    import shutil
-    from mwgc import history
-
     hist_path = tmp_path / "history.json"
     shutil.copy(FIXTURE, tmp_path / "ride.gpx")
 
@@ -252,16 +248,15 @@ def test_latest_records_history_after_upload(tmp_path, capsys, monkeypatch):
 
     # Stub out the upload so we don't hit Garmin.
     def fake_run(gpx_path, fit_path=None, do_upload=True, on_progress=None, prompter=None):
-        from mwgc.models import ConversionResult
         fit = fit_path or Path(gpx_path).with_suffix(".fit")
         fit.touch()
-        return ConversionResult(fit_path=fit, point_count=1, duration_s=1.0, distance_m=1.0), UploadOutcome.UPLOADED
+        result = ConversionResult(fit_path=fit, point_count=1, duration_s=1.0, distance_m=1.0)
+        return result, UploadOutcome.UPLOADED
 
     monkeypatch.setattr("mwgc.cli.core.run", fake_run)
 
     rc = cli.main(["--latest", str(tmp_path)])
     assert rc == 0
 
-    from mwgc.gpx_parser import parse_gpx
     _, start_time = parse_gpx(FIXTURE)
     assert history.was_uploaded(start_time, path=hist_path)
