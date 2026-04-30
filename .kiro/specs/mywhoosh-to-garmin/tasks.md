@@ -110,7 +110,7 @@ bottom; mark a box only when its acceptance criteria pass.
     point without atemp gives `None`. `test_fit_builder` — temperature
     appears in decoded records when present; absent when not.
 
-- [ ] 21. **HTTP upload timeout** _(R11)_
+- [x] 21. **HTTP upload timeout** _(R11)_
   - Read `MWGC_UPLOAD_TIMEOUT_S` env var (default 60) in `uploader.py`.
   - Pass the timeout to the garminconnect upload call (investigate whether
     `Garmin` exposes a timeout kwarg; if not, patch at the `garth`/

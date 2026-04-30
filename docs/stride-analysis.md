@@ -86,7 +86,7 @@ in the current threat model.**
 | #  | Threat                                                                                  | Status      | Notes |
 |----|-----------------------------------------------------------------------------------------|-------------|-------|
 | D1 | Hostile GPX (huge file / billion laughs) hangs the parser                                | **fixable** | Same as T1. Add a max-file-size guard and/or `defusedxml`. |
-| D2 | Network hangs on Garmin upload, GUI Run button stuck disabled                            | **mild**    | We don't set our own HTTP timeouts; we rely on `garth`'s defaults. The GUI's worker is a daemon thread, so closing the window kills it — escape hatch exists. |
+| D2 | Network hangs on Garmin upload, GUI Run button stuck disabled                            | **OK**      | The uploader now wraps `client.upload_activity` in a `concurrent.futures` future with a hard timeout (default 60 s, override via `MWGC_UPLOAD_TIMEOUT_S`). On timeout it raises `UploadError("upload timed out")` and the GUI re-enables Run. |
 | D3 | Hostile GPX with billions of trackpoints exhausts disk via huge FIT                      | **mild**    | No cap on point count; practically self-limiting (the parser would OOM first). A defensive sanity cap (~1M points) would harden this. |
 | D4 | Retry loops hammer Garmin and trigger account rate-limit / lockout                       | **OK**      | Exactly one retry-on-`AuthError`, no other loops. |
 

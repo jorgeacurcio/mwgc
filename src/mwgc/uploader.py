@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import concurrent.futures
+import os
 from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
@@ -17,6 +19,9 @@ from mwgc.errors import AuthError, UploadError
 from mwgc.prompter import Prompter, StdinPrompter
 
 ProgressCallback = Callable[[str, float], None]
+
+DEFAULT_UPLOAD_TIMEOUT_S = 60.0
+UPLOAD_TIMEOUT_ENV_VAR = "MWGC_UPLOAD_TIMEOUT_S"
 
 
 class UploadOutcome(Enum):
@@ -48,8 +53,12 @@ def _perform_upload(
     if on_progress is not None:
         on_progress("uploading", 0.0)
 
+    timeout = _get_upload_timeout()
+
     try:
-        response = client.upload_activity(str(fit_path))
+        response = _upload_with_timeout(client, fit_path, timeout)
+    except concurrent.futures.TimeoutError as e:
+        raise UploadError(f"upload timed out after {timeout:.0f}s") from e
     except GarminConnectAuthenticationError as e:
         raise AuthError(str(e)) from e
     except HTTPError as e:
@@ -141,3 +150,35 @@ def _interactive_login(token_dir: Path, prompter: Prompter | None = None) -> Gar
 
 def _default_token_dir() -> Path:
     return Path.home() / ".garminconnect"
+
+
+def _get_upload_timeout() -> float:
+    """Read MWGC_UPLOAD_TIMEOUT_S env var (default 60s).
+
+    Falls back to the default if the env var is missing, empty, or
+    non-numeric — we don't want a typo'd env var to break the upload.
+    """
+    raw = os.environ.get(UPLOAD_TIMEOUT_ENV_VAR, "").strip()
+    if not raw:
+        return DEFAULT_UPLOAD_TIMEOUT_S
+    try:
+        value = float(raw)
+    except ValueError:
+        return DEFAULT_UPLOAD_TIMEOUT_S
+    if value <= 0:
+        return DEFAULT_UPLOAD_TIMEOUT_S
+    return value
+
+
+def _upload_with_timeout(client: Any, fit_path: Path, timeout: float) -> Any:
+    """Run client.upload_activity in a worker thread with a hard timeout.
+
+    Raises concurrent.futures.TimeoutError if the call doesn't return within
+    the timeout window.  The underlying HTTP request will continue running
+    in the background until it completes or the process exits — we accept
+    that trade-off because Python can't cleanly cancel a blocked C-extension
+    socket read across platforms.
+    """
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+        future = ex.submit(client.upload_activity, str(fit_path))
+        return future.result(timeout=timeout)

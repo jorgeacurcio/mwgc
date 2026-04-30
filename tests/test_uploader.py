@@ -340,3 +340,65 @@ def test_upload_does_not_retry_on_non_auth_error(fake_auth):
         uploader.upload(Path("ride.fit"))
     # Single client; no retry was attempted.
     assert len(FakeGarmin.instances) == 1
+
+
+# ---------- HTTP upload timeout (R11) ----------
+
+
+class TestUploadTimeoutEnvVar:
+    """_get_upload_timeout reads MWGC_UPLOAD_TIMEOUT_S correctly."""
+
+    def test_default_when_unset(self, monkeypatch):
+        monkeypatch.delenv(uploader.UPLOAD_TIMEOUT_ENV_VAR, raising=False)
+        assert uploader._get_upload_timeout() == uploader.DEFAULT_UPLOAD_TIMEOUT_S
+
+    def test_default_when_empty(self, monkeypatch):
+        monkeypatch.setenv(uploader.UPLOAD_TIMEOUT_ENV_VAR, "")
+        assert uploader._get_upload_timeout() == uploader.DEFAULT_UPLOAD_TIMEOUT_S
+
+    def test_default_when_non_numeric(self, monkeypatch):
+        monkeypatch.setenv(uploader.UPLOAD_TIMEOUT_ENV_VAR, "forever")
+        assert uploader._get_upload_timeout() == uploader.DEFAULT_UPLOAD_TIMEOUT_S
+
+    def test_default_when_non_positive(self, monkeypatch):
+        monkeypatch.setenv(uploader.UPLOAD_TIMEOUT_ENV_VAR, "-5")
+        assert uploader._get_upload_timeout() == uploader.DEFAULT_UPLOAD_TIMEOUT_S
+        monkeypatch.setenv(uploader.UPLOAD_TIMEOUT_ENV_VAR, "0")
+        assert uploader._get_upload_timeout() == uploader.DEFAULT_UPLOAD_TIMEOUT_S
+
+    def test_reads_custom_value(self, monkeypatch):
+        monkeypatch.setenv(uploader.UPLOAD_TIMEOUT_ENV_VAR, "120")
+        assert uploader._get_upload_timeout() == 120.0
+        monkeypatch.setenv(uploader.UPLOAD_TIMEOUT_ENV_VAR, "5.5")
+        assert uploader._get_upload_timeout() == 5.5
+
+
+def test_upload_raises_upload_error_on_timeout(fake_auth, monkeypatch):
+    """A slow upload_activity call surfaces as UploadError('upload timed out')."""
+    import time
+
+    _, token_dir = fake_auth
+    token_dir.mkdir()
+    # Set timeout very short so the test runs fast.
+    monkeypatch.setenv(uploader.UPLOAD_TIMEOUT_ENV_VAR, "0.1")
+
+    # Make upload_activity sleep longer than the timeout.
+    def slow_upload(self_, path):
+        time.sleep(2.0)
+        return {}
+
+    monkeypatch.setattr(FakeGarmin, "upload_activity", slow_upload)
+
+    with pytest.raises(UploadError, match="timed out"):
+        uploader.upload(Path("ride.fit"))
+
+
+def test_upload_completes_normally_when_within_timeout(fake_auth, monkeypatch):
+    """A fast upload still works when a timeout is configured."""
+    _, token_dir = fake_auth
+    token_dir.mkdir()
+    monkeypatch.setenv(uploader.UPLOAD_TIMEOUT_ENV_VAR, "10")
+    FakeGarmin.upload_response_sequence = [{"detailedImportResult": {"successes": [{}]}}]
+
+    outcome = uploader.upload(Path("ride.fit"))
+    assert outcome == UploadOutcome.UPLOADED

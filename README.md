@@ -141,6 +141,24 @@ run — you won't be prompted again until they expire.
 If your account has MFA enabled, a second dialog appears for the code.
 Cancelling any dialog cancels the run cleanly.
 
+### Upload timeout
+
+Uploads to Garmin Connect have a hard timeout enforced by mwgc itself
+(default 60 s). If Garmin's API hangs, the run fails with exit code 4
+and `error: upload timed out after 60s` instead of stalling indefinitely.
+
+To override, set `MWGC_UPLOAD_TIMEOUT_S` in your environment before
+running:
+
+```powershell
+$env:MWGC_UPLOAD_TIMEOUT_S = "120"
+mwgc --input ride.gpx
+```
+
+```bash
+MWGC_UPLOAD_TIMEOUT_S=120 mwgc --input ride.gpx
+```
+
 ### Exit codes
 
 | Code | Meaning                                               |
