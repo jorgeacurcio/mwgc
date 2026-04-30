@@ -2,6 +2,10 @@ class MwgcError(Exception):
     """Base class for every error mwgc raises; catch this to handle any failure."""
 
 
+class ConfigError(MwgcError):
+    pass
+
+
 class GpxParseError(MwgcError):
     pass
 

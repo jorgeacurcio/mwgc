@@ -208,13 +208,25 @@ class _FakeGarth:
         self.parent.dumped_to = path
 
 
+class FakePrompter:
+    def email(self) -> str:
+        return "test@example.com"
+
+    def password(self) -> str:
+        return "secret-pw"
+
+    def mfa(self) -> str:
+        return "123456"
+
+
 @pytest.fixture
 def fake_auth(monkeypatch, tmp_path):
     FakeGarmin.reset()
     monkeypatch.setattr(uploader, "Garmin", FakeGarmin)
-    monkeypatch.setattr(uploader, "_prompt_email", lambda: "test@example.com")
-    monkeypatch.setattr(uploader, "_prompt_password", lambda: "secret-pw")
-    monkeypatch.setattr(uploader, "_prompt_mfa", lambda: "123456")
+    # Swap StdinPrompter in the uploader's namespace so the default-prompter
+    # fallback (`StdinPrompter()`) returns a FakePrompter instead of reading
+    # stdin during tests.
+    monkeypatch.setattr(uploader, "StdinPrompter", FakePrompter)
     token_dir = tmp_path / ".garminconnect"
     monkeypatch.setattr(uploader, "_default_token_dir", lambda: token_dir)
     return FakeGarmin, token_dir
@@ -264,7 +276,9 @@ def test_interactive_login_persists_tokens(fake_auth):
     client = uploader._interactive_login(token_dir)
     assert client.email == "test@example.com"
     assert client.password == "secret-pw"
-    assert client.prompt_mfa is uploader._prompt_mfa
+    # Garmin's prompt_mfa kw is wired to the Prompter's mfa method.
+    assert callable(client.prompt_mfa)
+    assert client.prompt_mfa() == "123456"
     assert client.login_calls == [None]
     assert client.dumped_to == str(token_dir)
 

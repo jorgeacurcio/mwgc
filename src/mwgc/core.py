@@ -6,6 +6,7 @@ from pathlib import Path
 from mwgc import fit_builder, gpx_parser, uploader
 from mwgc.devices import FENIX_5_PLUS
 from mwgc.models import ConversionResult, DeviceProfile
+from mwgc.prompter import Prompter
 from mwgc.uploader import UploadOutcome
 
 ProgressCallback = Callable[[str, float], None]
@@ -31,8 +32,9 @@ def convert(
 def upload(
     fit_path: Path | str,
     on_progress: ProgressCallback | None = None,
+    prompter: Prompter | None = None,
 ) -> UploadOutcome:
-    return uploader.upload(Path(fit_path), on_progress=on_progress)
+    return uploader.upload(Path(fit_path), on_progress=on_progress, prompter=prompter)
 
 
 def run(
@@ -40,6 +42,7 @@ def run(
     fit_path: Path | str | None = None,
     do_upload: bool = True,
     on_progress: ProgressCallback | None = None,
+    prompter: Prompter | None = None,
 ) -> tuple[ConversionResult, UploadOutcome | None]:
     gpx_path = Path(gpx_path)
     fit_path = Path(fit_path) if fit_path is not None else gpx_path.with_suffix(".fit")
@@ -50,7 +53,7 @@ def run(
     upload_outcome: UploadOutcome | None = None
     if do_upload:
         upload_progress = _scope(on_progress, "upload", 0.7, 1.0)
-        upload_outcome = upload(fit_path, on_progress=upload_progress)
+        upload_outcome = upload(fit_path, on_progress=upload_progress, prompter=prompter)
 
     return result, upload_outcome
 

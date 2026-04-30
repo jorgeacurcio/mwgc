@@ -49,7 +49,7 @@ def test_run_with_upload_threads_outcome(tmp_path, monkeypatch):
     out = tmp_path / "out.fit"
     upload_calls: list[Path] = []
 
-    def fake_upload(path, on_progress=None):
+    def fake_upload(path, on_progress=None, prompter=None):
         upload_calls.append(path)
         return UploadOutcome.UPLOADED
 
@@ -63,7 +63,9 @@ def test_run_with_upload_threads_outcome(tmp_path, monkeypatch):
 def test_run_threads_duplicate_outcome(tmp_path, monkeypatch):
     out = tmp_path / "out.fit"
     monkeypatch.setattr(
-        uploader, "upload", lambda path, on_progress=None: UploadOutcome.DUPLICATE
+        uploader,
+        "upload",
+        lambda path, on_progress=None, prompter=None: UploadOutcome.DUPLICATE,
     )
     _, outcome = core.run(FIXTURE, fit_path=out, do_upload=True)
     assert outcome == UploadOutcome.DUPLICATE
@@ -72,7 +74,7 @@ def test_run_threads_duplicate_outcome(tmp_path, monkeypatch):
 def test_run_progress_stages_are_namespaced(tmp_path, monkeypatch):
     out = tmp_path / "out.fit"
 
-    def fake_upload(path, on_progress=None):
+    def fake_upload(path, on_progress=None, prompter=None):
         if on_progress is not None:
             on_progress("uploading", 0.5)
             on_progress("done", 1.0)

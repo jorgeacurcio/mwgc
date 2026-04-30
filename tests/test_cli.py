@@ -80,7 +80,9 @@ def test_argparse_missing_required_input_exits_nonzero(capsys):
 
 def test_uploaded_outcome_in_summary(tmp_path, capsys, monkeypatch):
     monkeypatch.setattr(
-        uploader, "upload", lambda path, on_progress=None: UploadOutcome.UPLOADED
+        uploader,
+        "upload",
+        lambda path, on_progress=None, prompter=None: UploadOutcome.UPLOADED,
     )
     out = tmp_path / "out.fit"
     rc = cli.main(["--input", str(FIXTURE), "--output", str(out)])
@@ -92,7 +94,9 @@ def test_uploaded_outcome_in_summary(tmp_path, capsys, monkeypatch):
 
 def test_duplicate_outcome_exits_zero_and_is_reported(tmp_path, capsys, monkeypatch):
     monkeypatch.setattr(
-        uploader, "upload", lambda path, on_progress=None: UploadOutcome.DUPLICATE
+        uploader,
+        "upload",
+        lambda path, on_progress=None, prompter=None: UploadOutcome.DUPLICATE,
     )
     out = tmp_path / "out.fit"
     rc = cli.main(["--input", str(FIXTURE), "--output", str(out)])
@@ -106,7 +110,7 @@ def test_duplicate_outcome_exits_zero_and_is_reported(tmp_path, capsys, monkeypa
 
 
 def test_auth_error_exits_5(tmp_path, capsys, monkeypatch):
-    def fail_auth(path, on_progress=None):
+    def fail_auth(path, on_progress=None, prompter=None):
         raise AuthError("token expired")
 
     monkeypatch.setattr(uploader, "upload", fail_auth)
@@ -118,7 +122,7 @@ def test_auth_error_exits_5(tmp_path, capsys, monkeypatch):
 
 
 def test_upload_error_exits_4_and_keeps_fit(tmp_path, capsys, monkeypatch):
-    def fail_upload(path, on_progress=None):
+    def fail_upload(path, on_progress=None, prompter=None):
         raise UploadError("network down")
 
     monkeypatch.setattr(uploader, "upload", fail_upload)

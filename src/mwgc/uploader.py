@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import contextlib
-import getpass
 from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
@@ -16,6 +15,7 @@ from garminconnect import (
 )
 
 from mwgc.errors import AuthError, UploadError
+from mwgc.prompter import Prompter, StdinPrompter
 
 ProgressCallback = Callable[[str, float], None]
 
@@ -28,14 +28,16 @@ class UploadOutcome(Enum):
 def upload(
     fit_path: Path,
     on_progress: ProgressCallback | None = None,
+    prompter: Prompter | None = None,
 ) -> UploadOutcome:
-    client = _get_client()
+    prompter = prompter or StdinPrompter()
+    client = _get_client(prompter)
     try:
         return _perform_upload(client, fit_path, on_progress=on_progress)
     except AuthError:
         # Cached tokens may have expired between resume and upload (R4.4).
         # Force a fresh interactive login and retry exactly once.
-        client = _interactive_login(_default_token_dir())
+        client = _interactive_login(_default_token_dir(), prompter)
         return _perform_upload(client, fit_path, on_progress=on_progress)
 
 
@@ -106,25 +108,27 @@ def _is_duplicate_response(response: object) -> bool:
     return False
 
 
-def _get_client() -> Garmin:
+def _get_client(prompter: Prompter | None = None) -> Garmin:
     """Return an authenticated Garmin client, resuming from cached tokens if any."""
+    prompter = prompter or StdinPrompter()
     token_dir = _default_token_dir()
     if not token_dir.exists():
-        return _interactive_login(token_dir)
+        return _interactive_login(token_dir, prompter)
     client = Garmin()
     try:
         client.login(str(token_dir))
     except Exception:
         # Any failure here means the token cache is unusable; worst case the user re-enters creds.
-        return _interactive_login(token_dir)
+        return _interactive_login(token_dir, prompter)
     return client
 
 
-def _interactive_login(token_dir: Path) -> Garmin:
+def _interactive_login(token_dir: Path, prompter: Prompter | None = None) -> Garmin:
     """Prompt for credentials, run a fresh login, persist tokens on success."""
-    email = _prompt_email()
-    password = _prompt_password()
-    client = Garmin(email=email, password=password, prompt_mfa=_prompt_mfa)
+    prompter = prompter or StdinPrompter()
+    email = prompter.email()
+    password = prompter.password()
+    client = Garmin(email=email, password=password, prompt_mfa=prompter.mfa)
     try:
         client.login()
     except GarminConnectAuthenticationError as e:
@@ -137,15 +141,3 @@ def _interactive_login(token_dir: Path) -> Garmin:
 
 def _default_token_dir() -> Path:
     return Path.home() / ".garminconnect"
-
-
-def _prompt_email() -> str:
-    return input("Garmin Connect email: ").strip()
-
-
-def _prompt_password() -> str:
-    return getpass.getpass("Garmin Connect password: ")
-
-
-def _prompt_mfa() -> str:
-    return input("Garmin Connect MFA code: ").strip()
