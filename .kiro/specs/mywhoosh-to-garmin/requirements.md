@@ -181,3 +181,73 @@ accidental duplicates.
    "uploaded now" from "skipped").
    *(Update: accepted trade-off — both map to exit 0 for scripting
    simplicity; the distinction is in the stdout message only.)*
+
+### Requirement 10: Temperature data
+
+**User Story:** As a user, I want ambient temperature to appear in my
+Garmin Connect activity so my full ride data is preserved.
+
+#### Acceptance Criteria
+
+1. WHERE a trackpoint's GPX extension contains `<gpxtpx:atemp>`, THE
+   SYSTEM SHALL forward the value as the `temperature` field of the
+   corresponding FIT record message.
+2. WHERE `<gpxtpx:atemp>` is absent, THE SYSTEM SHALL leave the FIT
+   temperature field unset (no default / no fabrication).
+3. The `TrackPoint` model SHALL gain an optional `temperature_c: float | None`
+   field; existing callers that omit it SHALL continue to work.
+
+### Requirement 11: HTTP timeouts on upload
+
+**User Story:** As a user, I want the upload to fail fast if Garmin
+Connect is unreachable, rather than hanging indefinitely.
+
+#### Acceptance Criteria
+
+1. THE SYSTEM SHALL apply an explicit timeout (connect + read) to the
+   Garmin Connect upload request.
+2. IF the timeout is exceeded THE SYSTEM SHALL raise `UploadError` with
+   a clear "timed out" message and exit with code 4.
+3. The timeout value SHOULD be configurable via an env var
+   `MWGC_UPLOAD_TIMEOUT_S` (default 60 s) so power users can adjust it
+   without patching the code.
+
+### Requirement 12: Narrow exception handling in token resume
+
+**User Story:** As a developer, I want token-resume failures to be
+diagnosable, not silently swallowed by a bare `except Exception`.
+
+#### Acceptance Criteria
+
+1. `uploader._get_client` SHALL catch only the specific exceptions that
+   indicate unusable tokens:
+   `(FileNotFoundError, GarminConnectAuthenticationError, OSError,
+   json.JSONDecodeError)`.
+2. Any other exception during token resume SHALL propagate normally
+   rather than falling back to interactive login.
+
+### Requirement 13: XML DoS protection for GPX parsing
+
+**User Story:** As a user who processes GPX files from untrusted sources,
+I want the parser to be hardened against malicious XML.
+
+#### Acceptance Criteria
+
+1. THE SYSTEM SHALL reject GPX input that triggers XML external-entity
+   expansion or excessive entity nesting.
+2. Implementation SHALL use `defusedxml` to wrap the parse call, or
+   enforce a maximum input file size before parsing.
+3. IF the file exceeds the size limit (suggested: 50 MB) THE SYSTEM
+   SHALL raise `GpxParseError` with a clear message and exit code 2.
+
+### Requirement 14: Continuous integration
+
+**User Story:** As a developer, I want every push to run the test suite
+automatically so regressions are caught before they reach other machines.
+
+#### Acceptance Criteria
+
+1. A GitHub Actions workflow SHALL run `pytest` on every push and pull
+   request against Python 3.11 and 3.13.
+2. The workflow SHALL also run `ruff check` to catch lint errors.
+3. Badge status SHALL be visible in the README.

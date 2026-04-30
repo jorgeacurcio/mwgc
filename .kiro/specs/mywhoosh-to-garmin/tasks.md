@@ -100,6 +100,50 @@ bottom; mark a box only when its acceptance criteria pass.
   - Document `--latest DIR` usage, the `~/.mwgc/history.json` file, and
     exit code 6.
 
+- [ ] 20. **Temperature forwarding** _(R10)_
+  - Add `temperature_c: float | None = None` to `TrackPoint` (frozen
+    dataclass default keeps existing callers working).
+  - In `gpx_parser._extract_extensions`, parse `atemp` → `temperature_c`.
+  - In `fit_builder`, emit `record.temperature` (sint8, °C) when the
+    field is set.
+  - Tests: `test_gpx_parser` — fixture point with atemp parses correctly;
+    point without atemp gives `None`. `test_fit_builder` — temperature
+    appears in decoded records when present; absent when not.
+
+- [ ] 21. **HTTP upload timeout** _(R11)_
+  - Read `MWGC_UPLOAD_TIMEOUT_S` env var (default 60) in `uploader.py`.
+  - Pass the timeout to the garminconnect upload call (investigate whether
+    `Garmin` exposes a timeout kwarg; if not, patch at the `garth`/
+    `curl_cffi` session level).
+  - On timeout, surface as `UploadError("upload timed out")`.
+  - Tests: monkeypatch `upload_activity` to raise a timeout exception;
+    assert `UploadError` is raised and exit code is 4.
+
+- [ ] 22. **Narrow token-resume exception handling** _(R12)_
+  - In `uploader._get_client`, replace `except Exception` with
+    `except (FileNotFoundError, GarminConnectAuthenticationError,
+    OSError, json.JSONDecodeError)`.
+  - Tests: assert that an unexpected exception (e.g. `RuntimeError`)
+    during `client.login()` propagates rather than falling back to
+    interactive login.
+
+- [ ] 23. **XML DoS hardening** _(R13)_
+  - Add `defusedxml>=0.7,<1` to `pyproject.toml` dependencies.
+  - In `gpx_parser.parse_gpx`, add a file-size guard (raise
+    `GpxParseError` if `path.stat().st_size > 50 * 1024 * 1024`).
+  - Wrap the `gpxpy.parse` call using `defusedxml`'s safe parse, or
+    configure the underlying expat parser to disable entity expansion.
+  - Tests: a GPX file exceeding the size limit raises `GpxParseError`;
+    a normal file parses correctly.
+  - Update `requirements.lock` after adding the dependency.
+  - Update STRIDE doc: flip T1 / D1 status to **OK**.
+
+- [ ] 24. **GitHub Actions CI** _(R14)_
+  - Create `.github/workflows/ci.yml`: trigger on push + PR, matrix
+    Python 3.11 and 3.13, steps: checkout → setup-python → pip install
+    `.[dev]` → ruff check → pytest.
+  - Add a workflow status badge to the README `## Development` section.
+
 ## Out of scope for v1 (tracked, not built)
 
 - GUI front-end — moved to its own spec under

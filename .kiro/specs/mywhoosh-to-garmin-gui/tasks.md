@@ -79,6 +79,17 @@ continues from the CLI spec for clarity (12+).
   - Append a short note to `tests/manual_qa.md` capturing the
     Garmin Connect activity URL for the GUI run.
 
+- [ ] 20. **`--latest` folder mode in GUI**
+  - Add a "Folder mode" toggle (CTkCheckBox or CTkSwitch) to the GUI.
+  - When folder mode is active, replace the GPX file picker with a
+    folder picker ("Browse folder…").
+  - On Run: call `cli._find_latest_gpx(folder)` to resolve the input
+    path, then proceed as normal (history check included).
+  - If the folder contains no GPX files, show an error dialog.
+  - Update the log area to show which file was selected.
+  - Tests: smoke-test that the new widget is present when folder mode
+    is toggled on.
+
 ## Out of scope for GUI v1 (tracked, not built)
 
 - In-app settings dialog to enter / change credentials. v1 expects
