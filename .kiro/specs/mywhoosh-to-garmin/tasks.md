@@ -10,7 +10,7 @@ bottom; mark a box only when its acceptance criteria pass.
   - Add dev deps: `pytest`, `pytest-cov`, `ruff`.
   - Add `src/mwgc/__init__.py`, empty module stubs for the layout in
     design.md.
-  - Add `.gitignore` (`.venv`, `__pycache__`, `dist`, `*.fit`, `~/.garth`).
+  - Add `.gitignore` (`.venv`, `__pycache__`, `dist`, `*.fit`, token cache dir).
 
 - [ ] 2. **Data models** _(R1, R2)_
   - Implement `mwgc.models` with `TrackPoint`, `DeviceProfile`,
@@ -52,16 +52,18 @@ bottom; mark a box only when its acceptance criteria pass.
 
 - [ ] 7. **Uploader (mocked first)** _(R4.1, R4.5, R4.6)_
   - Implement `mwgc.uploader.upload(fit_path) -> UploadOutcome` using
-    `garth`.
+    `python-garminconnect` (`Garmin.upload_activity`).
   - Outcomes: `UPLOADED`, `DUPLICATE`, raise `UploadError` otherwise.
-  - Tests: fake `garth.client` covering happy path, duplicate response,
-    generic failure.
+  - Tests: fake `Garmin` client covering happy path, duplicate
+    response, and generic failure.
 
 - [ ] 8. **Auth flow with token cache and retry** _(R4.2, R4.3, R4.4)_
-  - On startup, attempt `garth.resume()`; on failure, run interactive
-    login including MFA prompt.
+  - On startup, attempt `Garmin.resume(token_dir)`; on failure, run
+    interactive `Garmin(email, password).login()` including the MFA
+    prompt, then persist tokens via `client.garth.dump(token_dir)`.
   - On `AuthError` during upload, re-login once and retry.
-  - Tests: mock `garth` to fail-then-succeed; assert one retry only.
+  - Tests: mock the `Garmin` client to fail-then-succeed; assert one
+    retry only.
 
 - [ ] 9. **CLI entrypoint** _(R5.1–R5.5, R7.1, R7.2)_
   - `argparse` with `--input`, `--output`, `--no-upload`.
@@ -80,7 +82,7 @@ bottom; mark a box only when its acceptance criteria pass.
 
 - [ ] 11. **README** _(supporting R5)_
   - Install instructions, CLI usage, where the token cache lives, how to
-    log out (delete `~/.garth`), troubleshooting (MFA, duplicate,
+    log out (delete `~/.garminconnect/`), troubleshooting (MFA, duplicate,
     malformed GPX).
 
 ## Out of scope for v1 (tracked, not built)

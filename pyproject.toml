@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mwgc"
+version = "0.1.0"
+description = "Convert MyWhoosh GPX exports to Garmin FIT and upload to Garmin Connect."
+requires-python = ">=3.11"
+dependencies = [
+    "gpxpy>=1.6",
+    "garminconnect>=0.3",
+    # FIT writer dependency (garmin-fit-sdk vs fit-tool) added in task 5
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+mwgc = "mwgc.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mwgc"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

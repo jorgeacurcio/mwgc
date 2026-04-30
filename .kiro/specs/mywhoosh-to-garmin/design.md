@@ -5,11 +5,11 @@
 Three-stage pipeline with a thin CLI wrapper:
 
 ```
-+----------+    +-------------+    +-------------+    +-----------+
-|  GPX     | -> |  Parser     | -> | FIT Builder | -> | Uploader  |
-|  file    |    | (gpxpy +    |    | (Garmin FIT |    | (garth)   |
-|          |    |  ext xml)   |    |  SDK)       |    |           |
-+----------+    +-------------+    +-------------+    +-----------+
++----------+    +-------------+    +-------------+    +---------------+
+|  GPX     | -> |  Parser     | -> | FIT Builder | -> | Uploader      |
+|  file    |    | (gpxpy +    |    | (Garmin FIT |    | (garmin-      |
+|          |    |  ext xml)   |    |  SDK)       |    |  connect)     |
++----------+    +-------------+    +-------------+    +---------------+
                        \                 /                  |
                         +--- core.convert() ---+            |
                                                             v
@@ -26,7 +26,11 @@ lives in `cli.py` other than argument parsing and progress printing.
 - **Garmin FIT SDK for Python** (`garmin-fit-sdk`) — official, supports
   encode and decode. Alternative: `fit-tool` (community, simpler API) —
   pick at task 4 after a spike.
-- **`garth`** — Garmin Connect auth + upload; handles MFA and token cache.
+- **`garminconnect`** (python-garminconnect) — actively maintained
+  wrapper around the unofficial Garmin Connect API; handles login, MFA,
+  token cache, and `upload_activity`. Uses `garth` internally as its
+  HTTP layer; we do not import `garth` directly because its public
+  surface is deprecated.
 - **`pytest`** — tests.
 - Packaging via `pyproject.toml` with a `mwgc` console-script entry point.
 
@@ -47,7 +51,7 @@ tests/
   test_gpx_parser.py
   test_fit_builder.py
   test_core.py
-  test_uploader.py  # garth mocked
+  test_uploader.py  # Garmin client mocked
 pyproject.toml
 README.md
 ```
@@ -146,19 +150,27 @@ v1.1 nice-to-have, not required.
 
 ## Uploader
 
-`garth` flow:
-1. On import, attempt `garth.resume("~/.garth")`.
-2. If resume fails or no tokens exist: prompt for email and password on
-   stdin, call `garth.login(email, password)`. `garth` handles the MFA
-   prompt internally.
-3. `garth.client.upload(fit_path)`.
-4. Map response to `UploadOutcome`:
-   - `UPLOADED` (HTTP 201/202)
-   - `DUPLICATE` (HTTP 409 with detailMessage containing "duplicate")
-   - `AUTH_FAILED` → trigger one re-login + retry
-   - `FAILED(reason)` → propagate
+`python-garminconnect` (`Garmin` class) flow:
+1. Try `Garmin.resume(token_dir)` to restore a saved session.
+   Default `token_dir = ~/.garminconnect`.
+2. If resume fails or tokens are absent: prompt for email and password
+   on stdin, instantiate `Garmin(email, password)`, call
+   `client.login()`. The library prompts for MFA on stdin when Garmin
+   requires it.
+3. On successful login, persist tokens via
+   `client.garth.dump(token_dir)` so the next run can `resume`.
+4. Upload with `client.upload_activity(fit_path)`.
+5. Map response to `UploadOutcome`:
+   - `UPLOADED` — HTTP 200/201/202 with non-empty
+     `detailedImportResult`.
+   - `DUPLICATE` — HTTP 409, or response payload containing
+     `"Duplicate Activity"`.
+   - `AUTH_FAILED` (`GarminConnectAuthenticationError`) → trigger one
+     re-login + retry.
+   - `FAILED(reason)` — propagate as `UploadError`.
 
-Token cache lives at `~/.garth` (garth default).
+Token cache lives at `~/.garminconnect/` by default. A configurable
+override via `MWGC_TOKEN_DIR` env var is deferred to v1.1.
 
 ## Core orchestration
 
@@ -211,7 +223,7 @@ If `fit_builder` raises mid-write, it deletes the partial file in a
     `do_upload=False`.
 - **Integration (gated):** real upload to Garmin Connect — manual only,
   not in CI.
-- **Mocked:** `test_uploader.py` uses a fake `garth.client` to assert
+- **Mocked:** `test_uploader.py` uses a fake `Garmin` client to assert
   duplicate handling and retry-once-on-auth.
 
 ## GUI extension path (informational, not v1)
