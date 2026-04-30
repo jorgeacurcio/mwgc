@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic, MyWhoosh-shaped fixture; replace with a real export before task 10 (end-to-end QA). -->
+<gpx version="1.1" creator="MyWhoosh"
+     xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1"
+     xmlns:gpxpx="http://www.garmin.com/xmlschemas/PowerExtension/v1">
+  <metadata>
+    <name>MyWhoosh Workout</name>
+    <time>2026-04-30T08:00:00Z</time>
+  </metadata>
+  <trk>
+    <name>MyWhoosh Workout</name>
+    <type>cycling</type>
+    <trkseg>
+      <trkpt lat="41.5000" lon="-8.4000">
+        <ele>100.0</ele>
+        <time>2026-04-30T08:00:00Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>140</gpxtpx:hr>
+            <gpxtpx:cad>88</gpxtpx:cad>
+            <gpxtpx:atemp>22</gpxtpx:atemp>
+          </gpxtpx:TrackPointExtension>
+          <gpxpx:PowerExtension>
+            <gpxpx:PowerInWatts>180</gpxpx:PowerInWatts>
+          </gpxpx:PowerExtension>
+        </extensions>
+      </trkpt>
+      <trkpt lat="41.5000" lon="-8.3999">
+        <ele>100.5</ele>
+        <time>2026-04-30T08:00:01Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>142</gpxtpx:hr>
+            <gpxtpx:cad>89</gpxtpx:cad>
+          </gpxtpx:TrackPointExtension>
+          <gpxpx:PowerExtension>
+            <gpxpx:PowerInWatts>185</gpxpx:PowerInWatts>
+          </gpxpx:PowerExtension>
+        </extensions>
+      </trkpt>
+      <trkpt lat="41.5000" lon="-8.3998">
+        <ele>101.0</ele>
+        <time>2026-04-30T08:00:02Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>144</gpxtpx:hr>
+            <gpxtpx:cad>89</gpxtpx:cad>
+          </gpxtpx:TrackPointExtension>
+          <gpxpx:PowerExtension>
+            <gpxpx:PowerInWatts>195</gpxpx:PowerInWatts>
+          </gpxpx:PowerExtension>
+        </extensions>
+      </trkpt>
+      <trkpt lat="41.5000" lon="-8.3997">
+        <ele>101.5</ele>
+        <time>2026-04-30T08:00:03Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>146</gpxtpx:hr>
+            <gpxtpx:cad>90</gpxtpx:cad>
+          </gpxtpx:TrackPointExtension>
+        </extensions>
+      </trkpt>
+      <trkpt lat="41.5000" lon="-8.3996">
+        <ele>102.0</ele>
+        <time>2026-04-30T08:00:04Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>148</gpxtpx:hr>
+          </gpxtpx:TrackPointExtension>
+          <gpxpx:PowerExtension>
+            <gpxpx:PowerInWatts>210</gpxpx:PowerInWatts>
+          </gpxpx:PowerExtension>
+        </extensions>
+      </trkpt>
+      <trkpt lat="41.5000" lon="-8.3995">
+        <ele>102.5</ele>
+        <time>2026-04-30T08:00:05Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>150</gpxtpx:hr>
+            <gpxtpx:cad>91</gpxtpx:cad>
+          </gpxtpx:TrackPointExtension>
+          <gpxpx:PowerExtension>
+            <gpxpx:PowerInWatts>215</gpxpx:PowerInWatts>
+          </gpxpx:PowerExtension>
+        </extensions>
+      </trkpt>
+      <trkpt lat="41.5000" lon="-8.3994">
+        <ele>103.0</ele>
+        <time>2026-04-30T08:00:06Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>151</gpxtpx:hr>
+            <gpxtpx:cad>91</gpxtpx:cad>
+          </gpxtpx:TrackPointExtension>
+          <gpxpx:PowerExtension>
+            <gpxpx:PowerInWatts>220</gpxpx:PowerInWatts>
+          </gpxpx:PowerExtension>
+        </extensions>
+      </trkpt>
+      <trkpt lat="41.5000" lon="-8.3993">
+        <ele>103.5</ele>
+        <time>2026-04-30T08:00:07Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>152</gpxtpx:hr>
+            <gpxtpx:cad>92</gpxtpx:cad>
+          </gpxtpx:TrackPointExtension>
+          <gpxpx:PowerExtension>
+            <gpxpx:PowerInWatts>225</gpxpx:PowerInWatts>
+          </gpxpx:PowerExtension>
+        </extensions>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
