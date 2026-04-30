@@ -19,7 +19,7 @@ bottom; mark a box only when its acceptance criteria pass.
 
 - [ ] 3. **Device profile** _(R2)_
   - Implement `mwgc.devices.FENIX_5_PLUS` with manufacturer=`garmin`,
-    product=`fenix5_plus`, product_id=3111, stable placeholder serial,
+    product=`fenix5_plus`, product_id=3110, stable placeholder serial,
     software_version=16.0.
 
 - [ ] 4. **GPX parser** _(R1.1, R1.2, R1.3, R1.4, R3.4, R7.1, R7.2)_

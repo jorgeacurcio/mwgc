@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 dependencies = [
     "gpxpy>=1.6",
     "garminconnect>=0.3",
-    # FIT writer dependency (garmin-fit-sdk vs fit-tool) added in task 5
+    "fit-tool>=0.9",
 ]
 
 [project.optional-dependencies]

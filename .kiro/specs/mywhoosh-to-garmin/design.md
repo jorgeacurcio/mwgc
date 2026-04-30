@@ -23,9 +23,12 @@ lives in `cli.py` other than argument parsing and progress printing.
 
 - **Python 3.11+** — best ecosystem for FIT writing and Garmin Connect.
 - **`gpxpy`** — GPX parsing; we read raw extension XML for power/cadence/HR.
-- **Garmin FIT SDK for Python** (`garmin-fit-sdk`) — official, supports
-  encode and decode. Alternative: `fit-tool` (community, simpler API) —
-  pick at task 4 after a spike.
+- **`fit-tool`** (community, picked after the task 5 spike) — class-based
+  message API with named attributes and FIT enums; ergonomic to author
+  and decode round-trips cleanly. Considered the official
+  `garmin-fit-sdk` but rejected: dict-based API was much more
+  boilerplate per message. Trade-off: `fit-tool` pulls `openpyxl`
+  transitively (for an export feature we don't use).
 - **`garminconnect`** (python-garminconnect) — actively maintained
   wrapper around the unofficial Garmin Connect API; handles login, MFA,
   token cache, and `upload_activity`. Uses `garth` internally as its
@@ -75,7 +78,7 @@ class TrackPoint:
 class DeviceProfile:
     manufacturer: str        # "garmin"
     product: str             # "fenix5_plus"
-    product_id: int          # 3111
+    product_id: int          # 3110
     serial_number: int       # placeholder, configurable
     software_version: float  # e.g. 16.0
 
@@ -138,7 +141,7 @@ The FIT SDK handles that conversion if we pass `datetime` objects.
 DeviceProfile(
     manufacturer="garmin",
     product="fenix5_plus",
-    product_id=3111,
+    product_id=3110,
     serial_number=3_141_592_653,  # stable placeholder
     software_version=16.0,
 )

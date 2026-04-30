@@ -49,7 +49,7 @@ and keeps device-specific stats coherent.
 
 1. THE SYSTEM SHALL set `file_id.manufacturer` to `garmin`.
 2. THE SYSTEM SHALL set `file_id.product` to `fenix5_plus`
-   (FIT `garmin_product` enum value 3111).
+   (FIT `garmin_product` enum value 3110).
 3. THE SYSTEM SHALL set `file_id.type` to `activity`.
 4. THE SYSTEM SHALL emit a `device_info` message at the start of records
    identifying the creator as Fenix 5 Plus with a configured serial number
