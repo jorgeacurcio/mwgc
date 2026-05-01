@@ -79,7 +79,7 @@ continues from the CLI spec for clarity (12+).
   - Append a short note to `tests/manual_qa.md` capturing the
     Garmin Connect activity URL for the GUI run.
 
-- [ ] 20. **`--latest` folder mode in GUI**
+- [x] 20. **`--latest` folder mode in GUI**
   - Add a "Folder mode" toggle (CTkCheckBox or CTkSwitch) to the GUI.
   - When folder mode is active, replace the GPX file picker with a
     folder picker ("Browse folder…").

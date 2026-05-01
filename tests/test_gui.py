@@ -49,3 +49,52 @@ def test_app_constructs_and_destroys_cleanly():
         assert app.log is not None
     finally:
         app.root.destroy()
+
+
+# ---------- folder mode (GUI task 20) ----------
+
+
+def test_folder_mode_toggle_and_history_check(tmp_path, monkeypatch):
+    """One combined test to keep the Tk root count low — multiple App()
+    instantiations in a single process hit `tcl_findLibrary` errors on Windows.
+
+    Verifies:
+      - folder-mode checkbox is present and defaults to off
+      - toggling folder mode relabels the GPX-input row
+      - the history pre-check returns True iff the start time is recorded
+    """
+    from pathlib import Path
+
+    from mwgc import history
+    from mwgc.gpx_parser import parse_gpx
+
+    fixture = Path(__file__).parent / "fixtures" / "sample_mywhoosh.gpx"
+    hist_path = tmp_path / "history.json"
+    monkeypatch.setattr("mwgc.history.DEFAULT_HISTORY_PATH", hist_path)
+
+    app = App()
+    try:
+        # widget presence + default state
+        assert app.folder_mode_var is not None
+        assert app.folder_mode_var.get() is False
+        assert app.gpx_label.cget("text") == "GPX file:"
+
+        # toggle on → relabel
+        app.folder_mode_var.set(True)
+        app._on_folder_mode_toggled()
+        assert app.gpx_label.cget("text") == "Folder:"
+
+        # toggle off → original label
+        app.folder_mode_var.set(False)
+        app._on_folder_mode_toggled()
+        assert app.gpx_label.cget("text") == "GPX file:"
+
+        # history pre-check: empty history returns False
+        assert app._already_uploaded(str(fixture)) is False
+
+        # …and True once the activity is recorded
+        _, start_time = parse_gpx(fixture)
+        history.record_upload(start_time, path=hist_path)
+        assert app._already_uploaded(str(fixture)) is True
+    finally:
+        app.root.destroy()

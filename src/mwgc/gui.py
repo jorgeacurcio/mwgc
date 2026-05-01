@@ -3,12 +3,15 @@ from __future__ import annotations
 import queue
 import threading
 import tkinter as tk
+from pathlib import Path
 from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
 
-from mwgc import core
-from mwgc.errors import AuthError, MwgcError
+from mwgc import core, history
+from mwgc.cli import _find_latest_gpx
+from mwgc.errors import AuthError, GpxParseError, MwgcError
+from mwgc.gpx_parser import parse_gpx
 from mwgc.models import ConversionResult
 from mwgc.uploader import UploadOutcome
 
@@ -49,12 +52,16 @@ class App:
     def _build_widgets(self) -> None:
         pad = {"padx": 12, "pady": 6}
 
-        ctk.CTkLabel(self.root, text="GPX file:").grid(row=0, column=0, sticky="w", **pad)
+        # Row 0: GPX input.  In folder mode the label and Browse handler
+        # change so the same row picks a directory instead of a file.
+        self.gpx_label = ctk.CTkLabel(self.root, text="GPX file:")
+        self.gpx_label.grid(row=0, column=0, sticky="w", **pad)
         self.gpx_entry = ctk.CTkEntry(self.root, width=440)
         self.gpx_entry.grid(row=0, column=1, sticky="ew", **pad)
-        ctk.CTkButton(
+        self.gpx_browse = ctk.CTkButton(
             self.root, text="Browse…", width=80, command=self._browse_gpx
-        ).grid(row=0, column=2, **pad)
+        )
+        self.gpx_browse.grid(row=0, column=2, **pad)
 
         ctk.CTkLabel(self.root, text="Output FIT:").grid(row=1, column=0, sticky="w", **pad)
         self.fit_entry = ctk.CTkEntry(
@@ -67,12 +74,24 @@ class App:
             self.root, text="Browse…", width=80, command=self._browse_fit
         ).grid(row=1, column=2, **pad)
 
+        # Row 2: option toggles in a single horizontal frame.
+        toggles = ctk.CTkFrame(self.root, fg_color="transparent")
+        toggles.grid(row=2, column=1, sticky="w", **pad)
+
+        self.folder_mode_var = ctk.BooleanVar(value=False)
+        ctk.CTkCheckBox(
+            toggles,
+            text="Folder mode (use latest .gpx in folder)",
+            variable=self.folder_mode_var,
+            command=self._on_folder_mode_toggled,
+        ).pack(side="left", padx=(0, 16))
+
         self.skip_upload_var = ctk.BooleanVar(value=False)
         ctk.CTkCheckBox(
-            self.root,
+            toggles,
             text="Skip upload (write FIT only)",
             variable=self.skip_upload_var,
-        ).grid(row=2, column=1, sticky="w", **pad)
+        ).pack(side="left")
 
         self.run_button = ctk.CTkButton(
             self.root, text="Run", command=self._on_run, width=120
@@ -94,11 +113,25 @@ class App:
 
     # ---- user actions ----
 
+    def _on_folder_mode_toggled(self) -> None:
+        """Swap the input label/text between file mode and folder mode."""
+        if self.folder_mode_var.get():
+            self.gpx_label.configure(text="Folder:")
+            self.gpx_entry.configure(placeholder_text="(folder containing .gpx exports)")
+        else:
+            self.gpx_label.configure(text="GPX file:")
+            self.gpx_entry.configure(placeholder_text="")
+        # Clear stale value so a path-from-the-other-mode doesn't linger.
+        self.gpx_entry.delete(0, tk.END)
+
     def _browse_gpx(self) -> None:
-        path = filedialog.askopenfilename(
-            title="Select GPX file",
-            filetypes=[("GPX files", "*.gpx"), ("All files", "*.*")],
-        )
+        if self.folder_mode_var.get():
+            path = filedialog.askdirectory(title="Select folder containing GPX files")
+        else:
+            path = filedialog.askopenfilename(
+                title="Select GPX file",
+                filetypes=[("GPX files", "*.gpx"), ("All files", "*.*")],
+            )
         if path:
             self.gpx_entry.delete(0, tk.END)
             self.gpx_entry.insert(0, path)
@@ -114,18 +147,39 @@ class App:
             self.fit_entry.insert(0, path)
 
     def _on_run(self) -> None:
-        gpx = self.gpx_entry.get().strip()
-        if not gpx:
-            messagebox.showerror("mwgc", "Please select a GPX file.")
+        raw = self.gpx_entry.get().strip()
+        folder_mode = self.folder_mode_var.get()
+        if not raw:
+            messagebox.showerror(
+                "mwgc",
+                "Please select a folder." if folder_mode else "Please select a GPX file.",
+            )
             return
 
         fit = self.fit_entry.get().strip() or None
         skip_upload = self.skip_upload_var.get()
 
-        self._set_running(True)
+        # Reset UI for this run before doing any blocking work.
         self.progress.set(0.0)
         self.log.delete("1.0", tk.END)
-        self._log_line(f"Starting: {gpx}")
+
+        # Folder mode: resolve the newest .gpx and short-circuit if it's
+        # already in the local upload history (matches CLI --latest semantics).
+        if folder_mode:
+            try:
+                gpx = str(_find_latest_gpx(Path(raw)))
+            except GpxParseError as e:
+                messagebox.showerror("mwgc — folder error", str(e))
+                return
+            self._log_line(f"Latest GPX in folder: {gpx}")
+            if not skip_upload and self._already_uploaded(gpx):
+                self._log_line("Already uploaded earlier — skipping.")
+                return
+        else:
+            gpx = raw
+            self._log_line(f"Starting: {gpx}")
+
+        self._set_running(True)
 
         worker = threading.Thread(
             target=self._run_worker,
@@ -133,6 +187,14 @@ class App:
             daemon=True,
         )
         worker.start()
+
+    def _already_uploaded(self, gpx_path: str) -> bool:
+        """Best-effort history check; failures fall through to the normal upload."""
+        try:
+            _, start_time = parse_gpx(gpx_path)
+        except GpxParseError:
+            return False
+        return history.was_uploaded(start_time)
 
     # ---- worker ----
 

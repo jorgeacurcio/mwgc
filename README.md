@@ -137,9 +137,15 @@ mwgc-gui
 ```
 
 A single window with a GPX file picker, an output FIT path, a
-"Skip upload" checkbox, a "Run" button, a progress bar, and a log
-area. The GUI reuses the same conversion and upload pipeline as the
-CLI; the only difference is where credentials come from.
+"Folder mode" checkbox, a "Skip upload" checkbox, a "Run" button, a
+progress bar, and a log area. The GUI reuses the same conversion and
+upload pipeline as the CLI; the only difference is where credentials
+come from.
+
+Tick **Folder mode** to switch the input picker to a folder selector —
+the GUI will pick the most recently modified `.gpx` file in that folder
+on Run, mirroring the CLI's `--latest` flag. If that activity is already
+in `~/.mwgc/history.json` the run is skipped with a log message.
 
 On the first upload the GUI shows a small modal dialog asking for your
 Garmin Connect email, then your password (masked).  On success the OAuth
