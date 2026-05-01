@@ -71,6 +71,14 @@ def _perform_upload(
     except (GarminConnectInvalidFileFormatError, FileNotFoundError, ValueError) as e:
         raise UploadError(f"invalid upload input: {e}") from e
     except GarminConnectConnectionError as e:
+        # Newer garminconnect wraps HTTP 409 "Duplicate Activity" responses
+        # as connection errors with the marker in the message string,
+        # rather than re-raising an HTTPError.  Treat that as DUPLICATE so
+        # cross-PC deduplication works.
+        if _is_duplicate_marker_in_message(str(e)):
+            if on_progress is not None:
+                on_progress("uploaded", 1.0)
+            return UploadOutcome.DUPLICATE
         raise UploadError(f"connection error: {e}") from e
     except UploadError:
         raise
@@ -84,6 +92,16 @@ def _perform_upload(
     if on_progress is not None:
         on_progress("uploaded", 1.0)
     return outcome
+
+
+def _is_duplicate_marker_in_message(text: str) -> bool:
+    """Detect Garmin's 'Duplicate Activity' marker in any error message string.
+
+    Used to recover the DUPLICATE outcome when garminconnect surfaces a 409
+    response as a GarminConnectConnectionError (its current behaviour) rather
+    than an HTTPError.
+    """
+    return "duplicate" in text.lower()
 
 
 def _is_duplicate_http_error(err: HTTPError) -> bool:

@@ -38,28 +38,14 @@ def test_main_is_callable():
     assert callable(main)
 
 
-def test_app_constructs_and_destroys_cleanly():
-    app = App()
-    try:
-        # Smoke check: required widgets exist.
-        assert app.run_button is not None
-        assert app.progress is not None
-        assert app.gpx_entry is not None
-        assert app.fit_entry is not None
-        assert app.log is not None
-    finally:
-        app.root.destroy()
-
-
-# ---------- folder mode (GUI task 20) ----------
-
-
-def test_folder_mode_toggle_and_history_check(tmp_path, monkeypatch):
-    """One combined test to keep the Tk root count low — multiple App()
-    instantiations in a single process hit `tcl_findLibrary` errors on Windows.
+def test_app_smoke_widgets_folder_mode_and_history(tmp_path, monkeypatch):
+    """Single combined test — multiple App() instantiations in one process
+    hit Tk's `tcl_findLibrary`/`init.tcl` errors on Windows, so we share one
+    root and assert everything we need against it.
 
     Verifies:
-      - folder-mode checkbox is present and defaults to off
+      - all expected widgets exist (smoke check)
+      - folder-mode checkbox defaults to off
       - toggling folder mode relabels the GPX-input row
       - the history pre-check returns True iff the start time is recorded
     """
@@ -74,8 +60,15 @@ def test_folder_mode_toggle_and_history_check(tmp_path, monkeypatch):
 
     app = App()
     try:
-        # widget presence + default state
+        # widget presence
+        assert app.run_button is not None
+        assert app.progress is not None
+        assert app.gpx_entry is not None
+        assert app.fit_entry is not None
+        assert app.log is not None
         assert app.folder_mode_var is not None
+
+        # default state
         assert app.folder_mode_var.get() is False
         assert app.gpx_label.cget("text") == "GPX file:"
 

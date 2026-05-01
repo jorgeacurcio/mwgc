@@ -100,6 +100,17 @@ def test_connection_error_becomes_upload_error():
         _perform_upload(client, Path("ride.fit"))
 
 
+def test_duplicate_via_garminconnect_connection_error_returns_duplicate():
+    """Real-world: garminconnect 0.3+ wraps HTTP 409 'Duplicate Activity' as
+    a GarminConnectConnectionError with the marker baked into the message
+    string, not as an HTTPError."""
+    err = GarminConnectConnectionError(
+        "API Error 409 - {'code': 202, 'content': 'Duplicate Activity.'}"
+    )
+    client = FakeClient(raises=err)
+    assert _perform_upload(client, Path("ride.fit")) == UploadOutcome.DUPLICATE
+
+
 def test_invalid_file_format_becomes_upload_error():
     client = FakeClient(raises=GarminConnectInvalidFileFormatError("bad ext"))
     with pytest.raises(UploadError, match="invalid upload input"):
