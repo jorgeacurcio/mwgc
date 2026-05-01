@@ -112,3 +112,61 @@ def test_core_does_not_write_to_stdout_or_stderr(tmp_path, capsys):
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == ""
+
+
+# ---------- history recording (R9.3) ----------
+
+
+def test_run_records_history_after_uploaded_outcome(tmp_path, monkeypatch):
+    """Successful UPLOADED → activity start time written to history.json."""
+    from mwgc import history
+
+    hist_path = tmp_path / "history.json"
+    monkeypatch.setattr("mwgc.history.DEFAULT_HISTORY_PATH", hist_path)
+    monkeypatch.setattr(
+        uploader,
+        "upload",
+        lambda path, on_progress=None, prompter=None: UploadOutcome.UPLOADED,
+    )
+
+    out = tmp_path / "out.fit"
+    core.run(FIXTURE, fit_path=out, do_upload=True)
+
+    from mwgc.gpx_parser import parse_gpx
+    _, start_time = parse_gpx(FIXTURE)
+    assert history.was_uploaded(start_time, path=hist_path)
+
+
+def test_run_records_history_after_duplicate_outcome(tmp_path, monkeypatch):
+    """DUPLICATE responses (already on Garmin from another machine) also record.
+
+    This is the cross-PC dedup case: machine B running the same GPX after
+    machine A uploaded it gets DUPLICATE from Garmin and writes the local
+    history so subsequent --latest runs on B skip without round-tripping.
+    """
+    from mwgc import history
+
+    hist_path = tmp_path / "history.json"
+    monkeypatch.setattr("mwgc.history.DEFAULT_HISTORY_PATH", hist_path)
+    monkeypatch.setattr(
+        uploader,
+        "upload",
+        lambda path, on_progress=None, prompter=None: UploadOutcome.DUPLICATE,
+    )
+
+    out = tmp_path / "out.fit"
+    core.run(FIXTURE, fit_path=out, do_upload=True)
+
+    from mwgc.gpx_parser import parse_gpx
+    _, start_time = parse_gpx(FIXTURE)
+    assert history.was_uploaded(start_time, path=hist_path)
+
+
+def test_run_does_not_record_history_when_not_uploading(tmp_path, monkeypatch):
+    hist_path = tmp_path / "history.json"
+    monkeypatch.setattr("mwgc.history.DEFAULT_HISTORY_PATH", hist_path)
+
+    out = tmp_path / "out.fit"
+    core.run(FIXTURE, fit_path=out, do_upload=False)
+
+    assert not hist_path.exists()

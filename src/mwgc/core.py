@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from mwgc import fit_builder, gpx_parser, uploader
+from mwgc import fit_builder, gpx_parser, history, uploader
 from mwgc.devices import FENIX_5_PLUS
 from mwgc.models import ConversionResult, DeviceProfile
 from mwgc.prompter import Prompter
@@ -54,6 +54,17 @@ def run(
     if do_upload:
         upload_progress = _scope(on_progress, "upload", 0.7, 1.0)
         upload_outcome = upload(fit_path, on_progress=upload_progress, prompter=prompter)
+
+        # R9.3: any successful upload — including DUPLICATE responses from
+        # Garmin (the activity was already there from another machine) —
+        # gets recorded in the local history so future runs (CLI --latest
+        # or GUI) on this machine can dedupe without round-tripping Garmin.
+        if upload_outcome in {UploadOutcome.UPLOADED, UploadOutcome.DUPLICATE}:
+            try:
+                _, start_time = gpx_parser.parse_gpx(gpx_path)
+                history.record_upload(start_time)
+            except Exception:  # noqa: BLE001 — history write is best-effort
+                pass
 
     return result, upload_outcome
 

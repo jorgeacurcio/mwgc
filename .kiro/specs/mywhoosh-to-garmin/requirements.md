@@ -175,7 +175,11 @@ accidental duplicates.
    in the history, THE SYSTEM SHALL print a "already uploaded, skipping"
    message and exit with code 0.
 3. AFTER a successful upload (outcome UPLOADED or DUPLICATE), THE SYSTEM
-   SHALL record the activity start time in the history.
+   SHALL record the activity start time in the history. This applies
+   regardless of how the upload was initiated — `--latest`, `--input`,
+   or via the GUI — so a re-run on a different machine that gets a
+   DUPLICATE response from Garmin still updates the local history and
+   subsequent `--latest` runs on that machine skip without round-tripping.
 4. THE SYSTEM SHALL exit with code 6 when the upload is skipped due to
    the history check (distinct from code 0, so scripts can distinguish
    "uploaded now" from "skipped").

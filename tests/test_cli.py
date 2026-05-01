@@ -8,7 +8,6 @@ import pytest
 from mwgc import cli, history, uploader
 from mwgc.errors import AuthError, FitBuildError, UploadError
 from mwgc.gpx_parser import parse_gpx
-from mwgc.models import ConversionResult
 from mwgc.uploader import UploadOutcome
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sample_mywhoosh.gpx"
@@ -240,22 +239,44 @@ def test_latest_skips_when_already_in_history(tmp_path, capsys, monkeypatch):
     assert "already uploaded" in capsys.readouterr().out.lower()
 
 
-def test_latest_records_history_after_upload(tmp_path, capsys, monkeypatch):
+def test_latest_records_history_after_upload(tmp_path, monkeypatch):
+    """--latest should record the activity in history after a successful upload."""
     hist_path = tmp_path / "history.json"
     shutil.copy(FIXTURE, tmp_path / "ride.gpx")
 
     monkeypatch.setattr("mwgc.history.DEFAULT_HISTORY_PATH", hist_path)
 
-    # Stub out the upload so we don't hit Garmin.
-    def fake_run(gpx_path, fit_path=None, do_upload=True, on_progress=None, prompter=None):
-        fit = fit_path or Path(gpx_path).with_suffix(".fit")
-        fit.touch()
-        result = ConversionResult(fit_path=fit, point_count=1, duration_s=1.0, distance_m=1.0)
-        return result, UploadOutcome.UPLOADED
-
-    monkeypatch.setattr("mwgc.cli.core.run", fake_run)
+    # Stub the upload at the uploader layer so core.run still executes
+    # its post-upload history recording.
+    monkeypatch.setattr(
+        "mwgc.core.upload",
+        lambda fit_path, on_progress=None, prompter=None: UploadOutcome.UPLOADED,
+    )
 
     rc = cli.main(["--latest", str(tmp_path)])
+    assert rc == 0
+
+    _, start_time = parse_gpx(FIXTURE)
+    assert history.was_uploaded(start_time, path=hist_path)
+
+
+def test_input_records_history_after_upload(tmp_path, monkeypatch):
+    """Even with explicit --input (no --latest), a successful upload writes history.
+
+    This protects against the cross-PC case: if the same ride is uploaded
+    from machine A then attempted again from machine B, B sees the
+    DUPLICATE response and records the start time so future --latest runs
+    on B skip it without round-tripping Garmin.
+    """
+    hist_path = tmp_path / "history.json"
+    monkeypatch.setattr("mwgc.history.DEFAULT_HISTORY_PATH", hist_path)
+    monkeypatch.setattr(
+        "mwgc.core.upload",
+        lambda fit_path, on_progress=None, prompter=None: UploadOutcome.DUPLICATE,
+    )
+
+    out = tmp_path / "out.fit"
+    rc = cli.main(["--input", str(FIXTURE), "--output", str(out)])
     assert rc == 0
 
     _, start_time = parse_gpx(FIXTURE)

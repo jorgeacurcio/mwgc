@@ -100,8 +100,14 @@ mwgc --latest ~/Downloads
 `--latest DIR` finds the newest `.gpx` file in `DIR` by modification time,
 converts it, and uploads it.  If the same activity has already been uploaded
 (determined by its start time), the tool prints a skip message and exits
-without re-uploading.  The upload history is stored in
-`~/.mwgc/history.json`.
+without re-uploading.
+
+The upload history is stored in `~/.mwgc/history.json` and is **updated
+on every successful upload** — whether you used `--latest`, `--input`,
+or the GUI.  Garmin's "duplicate" responses (the activity was already
+there from another machine) also count as a successful upload and get
+recorded, so on a fresh PC you'll only ever see the duplicate-detection
+round-trip once per ride.
 
 `--latest` and `--input` are mutually exclusive.
 

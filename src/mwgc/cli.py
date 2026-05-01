@@ -86,14 +86,8 @@ def main(argv: list[str] | None = None) -> int:
         print("\ncancelled.", file=sys.stderr)
         return EXIT_GENERIC
 
-    # Record successful uploads in history (both fresh and duplicate outcomes).
-    if args.latest and outcome in {UploadOutcome.UPLOADED, UploadOutcome.DUPLICATE}:
-        try:
-            _, start_time = parse_gpx(input_path)
-            history.record_upload(start_time)
-        except Exception:  # noqa: BLE001 — history write is best-effort
-            pass
-
+    # History recording happens inside core.run (R9.3) so the GUI and
+    # explicit --input runs benefit too — not just --latest.
     print(_summary(result, outcome))
     return EXIT_OK
 
