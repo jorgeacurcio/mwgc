@@ -9,7 +9,7 @@ description = "Convert MyWhoosh GPX exports to Garmin FIT and upload to Garmin C
 requires-python = ">=3.11"
 dependencies = [
     "gpxpy>=1.6,<2",
-    "garminconnect>=0.3,<0.5",
+    "garminconnect>=0.3.16,<0.5",
     "fit-tool>=0.9,<1",
     "defusedxml>=0.7,<1",
 ]

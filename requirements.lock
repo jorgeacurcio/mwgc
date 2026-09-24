@@ -473,9 +473,9 @@ fit-tool==0.9.15 \
     --hash=sha256:366ffe75ec3c3313a4164a3205b0eff8b7146f3d5c9c3f6fad8291c88b986cb1 \
     --hash=sha256:4d367e9fd146dc65288de2bfb9b63f54965485a7a3259fbaaadfefd1ba83e82e
     # via mwgc (pyproject.toml)
-garminconnect==0.3.3 \
-    --hash=sha256:e11dbbddf20abd60d5c8fbde1e7c688ca175a905237dfec8837ee935a1aca803 \
-    --hash=sha256:f608193d7a90079fa1fd1d86e8d10e88b871b6ab2500372a9dc48358f8c2d386
+garminconnect==0.3.16 \
+    --hash=sha256:2a5e838bf19608ff62329ef9845658bfed0c4974d7b1e486e3a49595438b69c5 \
+    --hash=sha256:e919b17589095227e78cbcb20fe05630ac6592bc39f598c9eee4e5bd91aeec30
     # via mwgc (pyproject.toml)
 gpxpy==1.6.2 \
     --hash=sha256:289bc2d80f116c988d0a1e763fda22838f83005573ece2bbc6521817b26fb40a \

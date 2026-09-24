@@ -164,7 +164,18 @@ def _interactive_login(token_dir: Path, prompter: Prompter | None = None) -> Gar
     email = prompter.email()
     password = prompter.password()
     token_dir.mkdir(parents=True, exist_ok=True)
-    client = Garmin(email=email, password=password, prompt_mfa=prompter.mfa)
+    # garminconnect >= 0.3.16 is required: since March 2026 Garmin's SSO sits
+    # behind Cloudflare TLS fingerprinting, and older releases (and garth's
+    # login) get a 429 on every fresh login. 0.3.16 impersonates a browser via
+    # curl_cffi and tries several fallback SSO strategies.
+    # retry_attempts=1: a failed login must not turn into repeated attempts,
+    # which is what gets an account rate-limited in the first place.
+    client = Garmin(
+        email=email,
+        password=password,
+        prompt_mfa=prompter.mfa,
+        retry_attempts=1,
+    )
     try:
         # Passing token_dir tells garminconnect to persist the OAuth tokens
         # there after a successful login, so subsequent runs can resume without

@@ -185,6 +185,7 @@ class FakeGarmin:
         self.email = email
         self.password = password
         self.prompt_mfa = prompt_mfa
+        self.kwargs = kw
         self.login_calls: list[str | None] = []
         self.upload_calls: list[str] = []
         self.dumped_to: str | None = None
@@ -260,6 +261,13 @@ def test_get_client_falls_through_when_token_dir_missing(fake_auth):
     assert client.password == "secret-pw"
     assert client.dumped_to == str(token_dir)
     assert token_dir.exists()
+
+
+def test_interactive_login_disables_retries(fake_auth):
+    """A failed login must not be retried: repeated attempts extend Garmin's WAF block."""
+    _, token_dir = fake_auth
+    client = uploader._interactive_login(token_dir, FakePrompter())
+    assert client.kwargs.get("retry_attempts") == 1
 
 
 def test_get_client_falls_through_when_resume_login_fails(fake_auth):
