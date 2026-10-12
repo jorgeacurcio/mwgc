@@ -15,7 +15,7 @@ for the GUI spec.
 
 ## Requirements
 
-- Python 3.11 or newer
+- Python 3.12 or newer (required by `garminconnect` >= 0.3.3)
 - A Garmin Connect account (only needed for upload)
 
 ## Install
