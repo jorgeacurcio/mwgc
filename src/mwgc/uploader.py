@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import concurrent.futures
+import importlib.metadata
 import json
 import os
+import re
 from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
@@ -13,6 +15,7 @@ from garminconnect import (
     GarminConnectAuthenticationError,
     GarminConnectConnectionError,
     GarminConnectInvalidFileFormatError,
+    GarminConnectTooManyRequestsError,
     HTTPError,
 )
 
@@ -23,6 +26,16 @@ ProgressCallback = Callable[[str, float], None]
 
 DEFAULT_UPLOAD_TIMEOUT_S = 60.0
 UPLOAD_TIMEOUT_ENV_VAR = "MWGC_UPLOAD_TIMEOUT_S"
+
+# Older releases cannot log in since Garmin moved SSO behind Cloudflare TLS
+# fingerprinting (March 2026). Keep in sync with pyproject.toml.
+MIN_GARMINCONNECT_VERSION = (0, 3, 17)
+
+RATE_LIMITED_MSG = (
+    "Garmin rejected the login with HTTP 429 (rate limited / blocked). "
+    "This is not a password problem. Do not retry now: repeated attempts "
+    "extend the block. Wait a few hours and try once more."
+)
 
 
 class UploadOutcome(Enum):
@@ -138,6 +151,7 @@ def _is_duplicate_response(response: object) -> bool:
 def _get_client(prompter: Prompter | None = None) -> Garmin:
     """Return an authenticated Garmin client, resuming from cached tokens if any."""
     prompter = prompter or StdinPrompter()
+    _check_garminconnect_version()
     token_dir = _default_token_dir()
     if not token_dir.exists():
         return _interactive_login(token_dir, prompter)
@@ -150,11 +164,17 @@ def _get_client(prompter: Prompter | None = None) -> Garmin:
         OSError,
         json.JSONDecodeError,
     ):
-        # Token cache is unusable (missing files, expired auth, unreadable bytes,
-        # corrupt JSON) — fall through to a fresh interactive login.
+        # Token cache is unusable (missing files, expired auth, old garth-format
+        # tokens, unreadable bytes, corrupt JSON) â€” fall through to a fresh
+        # interactive login.
         # Other exceptions (e.g. RuntimeError, ValueError) likely indicate a real
-        # bug in garminconnect/garth and should propagate so the user sees them.
+        # bug in garminconnect and should propagate so the user sees them.
         return _interactive_login(token_dir, prompter)
+    except GarminConnectTooManyRequestsError as e:
+        # Falling back to a credential login here would only extend the block.
+        raise AuthError(RATE_LIMITED_MSG) from e
+    except GarminConnectConnectionError as e:
+        raise AuthError(f"could not reach Garmin Connect: {e}") from e
     return client
 
 
@@ -164,10 +184,10 @@ def _interactive_login(token_dir: Path, prompter: Prompter | None = None) -> Gar
     email = prompter.email()
     password = prompter.password()
     token_dir.mkdir(parents=True, exist_ok=True)
-    # garminconnect >= 0.3.16 is required: since March 2026 Garmin's SSO sits
+    # garminconnect >= MIN_GARMINCONNECT_VERSION is required: since March 2026 Garmin's SSO sits
     # behind Cloudflare TLS fingerprinting, and older releases (and garth's
-    # login) get a 429 on every fresh login. 0.3.16 impersonates a browser via
-    # curl_cffi and tries several fallback SSO strategies.
+    # login) get a 429 on every fresh login. Newer ones impersonate a browser via
+    # curl_cffi and try several fallback SSO strategies.
     # retry_attempts=1: a failed login must not turn into repeated attempts,
     # which is what gets an account rate-limited in the first place.
     client = Garmin(
@@ -183,7 +203,30 @@ def _interactive_login(token_dir: Path, prompter: Prompter | None = None) -> Gar
         client.login(str(token_dir))
     except GarminConnectAuthenticationError as e:
         raise AuthError(str(e)) from e
+    except GarminConnectTooManyRequestsError as e:
+        raise AuthError(RATE_LIMITED_MSG) from e
+    except GarminConnectConnectionError as e:
+        # garminconnect raises this when every SSO strategy failed for a
+        # non-credential reason (WAF challenge, network, server error).
+        raise AuthError(f"login failed (not a credential rejection): {e}") from e
     return client
+
+
+def _check_garminconnect_version() -> None:
+    """Fail fast when the installed garminconnect predates the SSO workaround.
+
+    `git pull` updates pyproject.toml but not the virtualenv, so an old
+    install would otherwise fail every login with an opaque 429.
+    """
+    installed = importlib.metadata.version("garminconnect")
+    parts = tuple(int(n) for n in re.findall(r"\d+", installed)[:3])
+    if parts < MIN_GARMINCONNECT_VERSION:
+        required = ".".join(map(str, MIN_GARMINCONNECT_VERSION))
+        raise AuthError(
+            f"garminconnect {installed} is too old to log in to Garmin Connect "
+            f"(need >= {required}). Reinstall the dependencies: "
+            "pip install -r requirements.lock && pip install -e . --no-deps"
+        )
 
 
 def _default_token_dir() -> Path:
@@ -194,7 +237,7 @@ def _get_upload_timeout() -> float:
     """Read MWGC_UPLOAD_TIMEOUT_S env var (default 60s).
 
     Falls back to the default if the env var is missing, empty, or
-    non-numeric — we don't want a typo'd env var to break the upload.
+    non-numeric â€” we don't want a typo'd env var to break the upload.
     """
     raw = os.environ.get(UPLOAD_TIMEOUT_ENV_VAR, "").strip()
     if not raw:
@@ -213,7 +256,7 @@ def _upload_with_timeout(client: Any, fit_path: Path, timeout: float) -> Any:
 
     Raises concurrent.futures.TimeoutError if the call doesn't return within
     the timeout window.  The underlying HTTP request will continue running
-    in the background until it completes or the process exits — we accept
+    in the background until it completes or the process exits â€” we accept
     that trade-off because Python can't cleanly cancel a blocked C-extension
     socket read across platforms.
     """

@@ -5,6 +5,7 @@ from garminconnect import (
     GarminConnectAuthenticationError,
     GarminConnectConnectionError,
     GarminConnectInvalidFileFormatError,
+    GarminConnectTooManyRequestsError,
     HTTPError,
 )
 
@@ -268,6 +269,53 @@ def test_interactive_login_disables_retries(fake_auth):
     _, token_dir = fake_auth
     client = uploader._interactive_login(token_dir, FakePrompter())
     assert client.kwargs.get("retry_attempts") == 1
+
+
+def test_get_client_rate_limited_on_resume_does_not_prompt(fake_auth):
+    """A 429 while resuming must not escalate into a credential login."""
+    _, token_dir = fake_auth
+    token_dir.mkdir()
+    FakeGarmin.login_raises_sequence = [GarminConnectTooManyRequestsError("429")]
+    with pytest.raises(AuthError, match="429"):
+        uploader._get_client()
+    assert len(FakeGarmin.instances) == 1
+
+
+def test_get_client_connection_error_on_resume_raises_auth_error(fake_auth):
+    _, token_dir = fake_auth
+    token_dir.mkdir()
+    FakeGarmin.login_raises_sequence = [GarminConnectConnectionError("network down")]
+    with pytest.raises(AuthError, match="network down"):
+        uploader._get_client()
+    assert len(FakeGarmin.instances) == 1
+
+
+@pytest.mark.parametrize(
+    "exc, match",
+    [
+        (GarminConnectTooManyRequestsError("blocked"), "429"),
+        (GarminConnectConnectionError("All login strategies exhausted"), "exhausted"),
+    ],
+)
+def test_interactive_login_maps_non_credential_failures(fake_auth, exc, match):
+    _, token_dir = fake_auth
+    FakeGarmin.login_raises_sequence = [exc]
+    with pytest.raises(AuthError, match=match):
+        uploader._interactive_login(token_dir, FakePrompter())
+
+
+@pytest.mark.parametrize("installed", ["0.3.3", "0.3.16"])
+def test_get_client_rejects_outdated_garminconnect(fake_auth, monkeypatch, installed):
+    monkeypatch.setattr(uploader.importlib.metadata, "version", lambda _: installed)
+    with pytest.raises(AuthError, match="too old"):
+        uploader._get_client()
+    assert FakeGarmin.instances == []
+
+
+def test_get_client_accepts_current_garminconnect(fake_auth, monkeypatch):
+    monkeypatch.setattr(uploader.importlib.metadata, "version", lambda _: "0.4.0")
+    uploader._get_client()
+    assert len(FakeGarmin.instances) == 1
 
 
 def test_get_client_falls_through_when_resume_login_fails(fake_auth):
